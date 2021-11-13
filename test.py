@@ -20,9 +20,9 @@ import asyncio
 def demo():
     logo = open('VIP-Project/logo-beige.png', 'rb').read()  
     put_row([None, None, put_image(logo, width='110px'), put_markdown('# Pixtono'), None, None],size=50)
-    put_markdown('### A Non-Photorealistic Rendering and Pixelation of Face Images Application')
-    put_markdown('#### TDS3651 Visual Information Processing - Project')
-    put_markdown('##### Group 5: Lee Min Xuan (1181302793) Lim Wan Teng (1181100769) Tan Jia Qi (1191301879) Vickey Tan (1181101852)')
+    put_markdown('### A Non-Photorealistic Rendering and Pixelation of Face Images Application 📸')
+    put_markdown('#### TDS3651 Visual Information Processing - Project 🎓')
+    put_markdown('##### Group 5: Lee Min Xuan (1181302793) Lim Wan Teng (1181100769) Tan Jia Qi (1191301879) Vickey Tan (1181101852) 👩‍💻')
     
     userinput()
     #put example images for preprocess, style transform one by one
@@ -37,11 +37,11 @@ def demo():
 
 def userinput():
     # upload image and direct to image preprocessing (enhancement, filtering, fg-bg segmentation)
-    put_text('Welcome to Pixtono! You may now upload your image for editing.')
-    put_text('>> Preferably a full face photo to generate the best results.')
+    put_text('Welcome to Pixtono! You may now upload your image for editing. 😊')
+    put_text('>> Preferably a full face photo to generate the best results. 🤳')
     img = file_upload("Select a image:", accept="image/*") 
     
-    put_text('Image pre-procesing includes the functions of image enhancement, filtering and background changing.')
+    put_text('Image pre-processing includes the functions of image enhancement, filtering and background changing.')
     put_text('Image style transformation includes the effects of cartoon, oil painting, pencil sketch, watercolour painting, and pixelation.')
     put_text('You may choose to do image pre-processing before image style transformation or proceed to image style transformation directly.')
     operation = radio("Choose",options = ['Image Pre-Processing','Image Style Transformation'])
@@ -50,6 +50,7 @@ def userinput():
     elif operation == "Image Style Transformation":
         img_styletransform(img)
 
+#------------------------Image Preprocessing------------------------
 def img_preprocess(img):
     put_text('Please choose the function preferred, you can continue with other function after one.')
     operation = radio("Choose",options = ['Image Enhancement','Image Filtering','Image Background Changing'])
@@ -200,6 +201,7 @@ def img_background(img):
     elif operation == "Image Background Changing":
         img_background(img)
 
+#------------------------Image Style Transformation------------------------
 def img_styletransform(img):
     put_text('Please choose the effect preferred, you can only choose one effect then choose to continue with pixelization.')
     operation = radio("Choose",options = ['Cartoon','Oil Painting','Pencil Sktech','Watercolour Painting'])
@@ -211,6 +213,50 @@ def img_styletransform(img):
         img_pencilsketch(img)
     elif operation == "Watercolour Painting":
         img_watercolour(img)
+
+def img_cartoon(img):
+    
+    put_text('Do you want to continue with pixelization?')
+    operation = radio("Choose",options = ['Yes','No'])
+    if operation == "Yes":
+        img_pixelation(img)
+    elif operation == "No":
+        endpage()
+    
+def img_oilpaint(img):
+    
+    put_text('Do you want to continue with pixelization?')
+    operation = radio("Choose",options = ['Yes','No'])
+    if operation == "Yes":
+        img_pixelation(img)
+    elif operation == "No":
+        endpage()
+        
+def img_pencilsketch(img):
+    
+    put_text('Do you want to continue with pixelization?')
+    operation = radio("Choose",options = ['Yes','No'])
+    if operation == "Yes":
+        img_pixelation(img)
+    elif operation == "No":
+        endpage()
+        
+def img_watercolour(img):
+    
+    put_text('Do you want to continue with pixelization?')
+    operation = radio("Choose",options = ['Yes','No'])
+    if operation == "Yes":
+        img_pixelation(img)
+    elif operation == "No":
+        endpage()
+            
+def img_pixelation(img):
+    #codes
+    endpage()
+    
+def endpage():
+    put_text('Thank you for using this application. Kindly fill up the feedback form to help us improve better. 😃')
+    put_link('Feedback Form', url='https://forms.gle/iodfkvqG8DmBUzWA9', new_window=True)
         
 if __name__ == "__main__":
     try:
