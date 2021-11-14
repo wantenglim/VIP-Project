@@ -1,26 +1,34 @@
+import pywebio
 from pywebio.input import *
 from pywebio.output import *
-import numpy as np
+from pywebio import start_server
+from pywebio.exceptions import SessionClosedException
+import sys
+import asyncio
 import cv2
-import math
+from PIL import Image
+from PIL import ImageFile
+import io
+from io import BytesIO
 import os
+import math
+import numpy as np
+from numpy import linalg as LA
 import matplotlib
 matplotlib.use('TkAgg')
 from matplotlib import pyplot as plt
 import time
 import json
-from pywebio.input import *
-from pywebio.output import *
-from pywebio import start_server
-from imgaug import augmenters as iaa
+import skimage
 from skimage.segmentation import felzenszwalb, slic, quickshift, watershed
 from skimage.segmentation import mark_boundaries
-import pywebio
-import sys
-import asyncio
+from rembg.bg import remove
+from sklearn.cluster import KMeans
+from imgaug import augmenters as iaa
 import warnings
 warnings.filterwarnings("ignore")
 
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 if sys.platform == 'win32':
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
@@ -39,9 +47,10 @@ def start():
         #step 2: image filter 
         filter_image(img,lj_map)
         #step 3: background remove 
-        #img_background(img)
-        # can choose no remove background 
+        img_background(img)
+        #step 4: style tranformation
         main_function(img)
+        #step5: pixelization
         #pixelate(img)
         endpage()
 
@@ -64,7 +73,7 @@ def progress_bar():
         time.sleep(0.1)
         
 def main_function(img):
-    main_function = radio("Choose a main features",options = ['Cartoonization','Oil Paint','Pencil Sketch','Watercolour'])
+    main_function = radio("Choose a main features",options = ['Cartoonization','Oil Paint','Pencil Sketch','Watercolour'], required=True)
     # give user stack filter once more
     if main_function == "Cartoonization":
         cartoonization(img)
@@ -74,12 +83,12 @@ def main_function(img):
         sketch(img)
     elif main_function == "Watercolour":
         watercolor(img)
-        
+# ---------------------------------ENHANCEMENT--------------------------------        
 # ---------------------------------FILTERING--------------------------------
 def filter_image(img,lj_map):
     filter_preview = open(path+'/filter-preview.png', 'rb').read()  
     popup('Filter Preview', [put_image(filter_preview,width='400px'),put_buttons(['close_popup()'], onclick=lambda _: close_popup())])
-    operation = radio("Image Filter",options = ['Filter sepia','Filter lighting','Filter clarendon','No filter'])
+    operation = radio("Image Filter",options = ['Filter sepia','Filter lighting','Filter clarendon','No filter'], required=True)
     if operation == "Filter sepia":
         filter_sepia(img)
     elif operation == "Filter lighting":
@@ -185,11 +194,110 @@ def filter_clarendon(img,lj_map):
         put_file(label="Download",name='filter_'+ img['filename'], content=img['content'])
         put_button("Retry", onclick=start, color='primary', outline=True)
 
+# ---------------------------------BACKGROUND--------------------------------
+def img_background(img):
+    backgroundsolid_preview = open(path+'/background-preview-solid.png', 'rb').read()  
+    popup('Filter Preview', [put_image(backgroundsolid_preview,width='800px'),put_buttons(['close_popup()'], onclick=lambda _: close_popup())])
+    backgroundpattern_preview = open(path+'/background-preview-pattern.png', 'rb').read()  
+    popup('Filter Preview', [put_image(backgroundpattern_preview,width='800px'),put_buttons(['close_popup()'], onclick=lambda _: close_popup())])
+    background_choice = radio("Choose",options = ['Transparent Background','Solid Color Background',
+                                                    'Customize & Patterned Background', 'No Change'], required=True)
+    if background_choice == "Transparent Background" :
+        bg_remover(img)
+    elif background_choice == "Solid Color Background":
+        bg_solid(img)
+    elif background_choice == "Customize & Patterned Background":
+        bg_cuspat(img)
+    elif background_choice == "No Change":
+        return img
+
+def bg_remover(img):
+    with use_scope("scope_bg_remover", clear=True):
+        progress_bar()
+        image = img['content']
+        result = remove(image)
+        img_transpB = Image.open(io.BytesIO(result)).convert("RGBA")
+        img_transpB.save('img_transpB.png', format='PNG')
+        result = open('img_transpB.png','rb').read()
+        put_markdown('## **Background Removing Result:**')
+        put_row([put_text("Before: "), None, put_text("After: ")])
+        put_row([put_image(img['content']), None, put_image(result)])
+        img['content'] = result
+        put_file(label="Download",name='filter_'+ img['filename'], content=result)
+        os.remove("img_transpB.png")
+        put_button("Retry", onclick=start, color='primary', outline=True)
+
+def bg_solid(img):
+    with use_scope("scope_bg_solid", clear=True):
+        html_colors = ['Aqua','Beige','Black','Brown','Coral',
+                    'Dark grey','Fuchsia','Green','HotPink','Indigo',
+                    'LightBlue','Lime','Medium Blue','Orange','Pink',
+                    'Rebecca Purple','Red','Teal','White','Yellow']    
+        progress_bar()
+        image = img['content']
+        result = remove(image)
+        img_transpB = Image.open(io.BytesIO(result)).convert("RGBA")
+        img_transpB.save('img_transpB.png', format='PNG')
+        foreground = Image.open('img_transpB.png').convert("RGBA")
+        color_choice = input_group("Background Colour Picker",[select("Choose a background colour: ", name='colour', options=html_colors, required=True)])
+        img_solidB = Image.new("RGBA", img_transpB.size, color_choice['colour']) 
+        img_solidB.paste(foreground, mask=foreground)
+        img_solidB.convert("RGB")
+        img_solidB.save('img_solidB.png', format='PNG')
+        result = open('img_solidB.png','rb').read()
+        put_markdown('## **Background Removing Result:**')
+        put_row([put_text("Before: "), None, put_text("After: ")])
+        put_row([put_image(img['content']), None, put_image(result)])
+        img['content'] = result
+        put_file(label="Download",name='filter_'+ img['filename'], content=result)
+        os.remove("img_transpB.png")
+        os.remove("img_solidB.png")
+        put_button("Retry", onclick=start, color='primary', outline=True)
+
+def bg_cuspat(img):
+    with use_scope("scope_bg_cuspat", clear=True):
+        background_list = ['Customize','Horizontal-1','Horizontal-2','Horizontal-3','Horizontal-4','Horizontal-5',
+                            'Square-1','Square-2','Square-3','Square-4','Square-5',
+                            'Vertical-1','Vertical-2','Vertical-3','Vertical-4','Vertical-5']
+        progress_bar()
+        image = img['content']
+        result = remove(image)
+        img_transpB = Image.open(io.BytesIO(result)).convert("RGBA")
+        img_transpB.save('img_transpB.png', format='PNG')
+        foreground = Image.open('img_transpB.png').convert("RGBA")
+        cuspat_choice = input_group("Background Changer",[select("Choose/Customize a background pattern: ", name='xuanze', options=background_list, required=True)])
+        bg_path = path + '/background'
+        if cuspat_choice['xuanze'] != 'Customize':
+            for image_name in os.listdir(bg_path):
+                input_path = os.path.join(bg_path, image_name)
+                if image_name == cuspat_choice['xuanze']+".png":
+                    background = Image.open(input_path).convert("RGBA")
+        else:
+            bgimg = file_upload("Select your background image:", accept="image/*")         
+            background = bgimg['content']
+            background = Image.open(io.BytesIO(background)).convert("RGBA")
+            #background = background.convert("RGBA")
+        
+        width = (background.width - foreground.width) // 2
+        height = (background.height - foreground.height) // 2
+        background.paste(foreground, (width, height), foreground)
+        background.convert("RGB")
+        background.save('img_cuspatB.png', format='PNG')
+        result = open('img_cuspatB.png','rb').read()
+        put_markdown('## **Background Removing Result:**')
+        put_row([put_text("Before: "), None, put_text("After: ")])
+        put_row([put_image(img['content']), None, put_image(result)])
+        img['content'] = result
+        put_file(label="Download",name='filter_'+ img['filename'], content=result)
+        os.remove("img_transpB.png")
+        os.remove("img_cuspatB.png")
+        put_button("Retry", onclick=start, color='primary', outline=True)
+
 # ---------------------------------CARTOON--------------------------------
 def cartoonization(img):
     cartoon_preview = open(path+'/cartoon-preview.png', 'rb').read()  
     popup('Cartoonization Preview', [put_image(cartoon_preview,width='400px'),put_buttons(['close_popup()'], onclick=lambda _: close_popup())])
-    cartoon_choice = radio("Cartoonization",options = ['Comics','Twilight','Classic'])
+    cartoon_choice = radio("Cartoonization",options = ['Comics','Twilight','Classic'], required=True)
     if cartoon_choice == "Comics" :
         cartoon_comics(img)
     elif cartoon_choice == "Twilight":
