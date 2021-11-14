@@ -4,8 +4,6 @@ import numpy as np
 import cv2
 import math
 import os
-import matplotlib
-matplotlib.use('TkAgg')
 from matplotlib import pyplot as plt
 import time
 import json
@@ -18,8 +16,6 @@ from skimage.segmentation import mark_boundaries
 import pywebio
 import sys
 import asyncio
-import warnings
-warnings.filterwarnings("ignore")
 
 if sys.platform == 'win32':
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -28,7 +24,7 @@ path = "./assets"
 
 def start():
     remove(scope="start_app")
-    with use_scope("start_app", clear=True):
+    with use_scope("start_app"):
         #put_markdown('# **Multifunctional Face Image Processing**')
         startpage()
         img = file_upload("Upload an image:", accept="image/*", required=True)
@@ -57,12 +53,6 @@ def endpage():
     put_text('Thank you for using this application. Kindly fill up the feedback form to help us improve better. 😃')
     put_link('Feedback Form', url='https://forms.gle/iodfkvqG8DmBUzWA9', new_window=True)
 
-def progress_bar():
-    put_processbar('bar',auto_close=True)
-    for i in range(1, 11):
-        set_processbar('bar', i / 10)
-        time.sleep(0.1)
-        
 def main_function(img):
     main_function = radio("Choose a main features",options = ['Cartoonization','Oil Paint','Pencil Sketch','Watercolour'])
     # give user stack filter once more
@@ -77,7 +67,6 @@ def main_function(img):
         
 # ---------------------------------FILTERING--------------------------------
 def filter_image(img,lj_map):
-
     operation = radio("Image Filter",options = ['Filter sepia','Filter lighting','Filter clarendon','No filter'])
     if operation == "Filter sepia":
         filter_sepia(img)
@@ -105,13 +94,20 @@ def getBGR(img, lj_map, i, j):
     return lj_map[x][y]
 
 def filter_sepia(img):
-    with use_scope("scope_filter_sepia", clear=True):
-        progress_bar()
+    remove(scope="scope_filter_sepia")
+    remove(scope="scope_filter_lighting")
+    remove(scope = "scope_filter_clarendon")
+    remove(scope = "scope_cartoon_comics")
+    remove(scope = "scope_cartoon_twilight")
+    remove(scope = "scope_cartoon_classic")
+    remove(scope="scope_sketch")
+    remove(scope="scope_watercolor")
+    with use_scope("scope_filter_sepia"):
         result = img['content']
         result = np.frombuffer(result, np.uint8)
         result = cv2.imdecode(result, cv2.IMREAD_COLOR)
         result = sepia(result)
-        is_success, im_buf_arr = cv2.imencode(".png", result)
+        is_success, im_buf_arr = cv2.imencode(".jpg", result)
         byte_im = im_buf_arr.tobytes()
         put_markdown('## **Result**')
         put_row([put_text("Before: "), None, put_text("After: ")])
@@ -122,8 +118,15 @@ def filter_sepia(img):
         put_html('<hr>')
         
 def filter_lighting(img):
-    with use_scope("scope_filter_lighting", clear=True):
-        progress_bar()
+    remove(scope="scope_filter_sepia")
+    remove(scope="scope_filter_lighting")
+    remove(scope = "scope_filter_clarendon")
+    remove(scope = "scope_cartoon_comics")
+    remove(scope = "scope_cartoon_twilight")
+    remove(scope = "scope_cartoon_classic")
+    remove(scope="scope_sketch")
+    remove(scope="scope_watercolor")
+    with use_scope("scope_filter_lighting"):
         image = img['content']
         image = np.frombuffer(image, np.uint8)
         image = cv2.imdecode(image, cv2.IMREAD_COLOR)
@@ -152,7 +155,7 @@ def filter_lighting(img):
                 else:
                     dst[i,j] = np.uint8((B, G, R))
                     result = dst
-        is_success, im_buf_arr = cv2.imencode(".png", result)
+        is_success, im_buf_arr = cv2.imencode(".jpg", result)
         byte_im = im_buf_arr.tobytes()
         put_markdown('## **Result**')
         put_row([put_text("Before: "), None, put_text("After: ")])
@@ -162,8 +165,15 @@ def filter_lighting(img):
         put_button("Retry", onclick=start, color='primary', outline=True)
 
 def filter_clarendon(img,lj_map):
-    with use_scope("scope_filter_clarendon", clear=True):
-        progress_bar()
+    remove(scope="scope_filter_sepia")
+    remove(scope="scope_filter_lighting")
+    remove(scope = "scope_filter_clarendon")
+    remove(scope = "scope_cartoon_comics")
+    remove(scope = "scope_cartoon_twilight")
+    remove(scope = "scope_cartoon_classic")
+    remove(scope="scope_sketch")
+    remove(scope="scope_watercolor")
+    with use_scope("scope_filter_clarendon"):
         image = img['content']
         image = np.frombuffer(image, np.uint8)
         image = cv2.imdecode(image, cv2.IMREAD_COLOR)
@@ -175,7 +185,7 @@ def filter_clarendon(img,lj_map):
             for j in range(cols):
                 dst[i][j] = getBGR(image, lj_map, i, j)
         result = dst
-        is_success, im_buf_arr = cv2.imencode(".png", result)
+        is_success, im_buf_arr = cv2.imencode(".jpg", result)
         byte_im = im_buf_arr.tobytes()
         put_markdown('## **Result**')
         put_row([put_text("Before: "), None, put_text("After: ")])
@@ -221,15 +231,17 @@ def Countours(image):
     return contoured_image
 
 def cartoon_comics(img):
-    with use_scope("scope_cartoon_comics", clear=True):
-        progress_bar()
+    remove(scope="scope_filter_sepia")
+    remove(scope="scope_filter_lighting")
+    remove(scope = "scope_filter_clarendon")
+    remove(scope = "scope_cartoon_comics")
+    remove(scope = "scope_cartoon_twilight")
+    remove(scope = "scope_cartoon_classic") 
+    with use_scope("scope_cartoon_comics"):
         image = img['content']
         image = np.frombuffer(image, np.uint8)
         image = cv2.imdecode(image, cv2.IMREAD_COLOR)
-        dpi = 100
-        height, width, depth = image.shape
-        figsize = width / float(dpi), height / float(dpi)
-        plt.figure(figsize= figsize )
+        plt.figure(figsize= (8,10))
         plt.contourf(np.flipud(image[:,:,0]),levels=4,cmap='inferno')
         plt.axis('off')
         plt.savefig('cartooned.png',bbox_inches='tight')
@@ -244,8 +256,13 @@ def cartoon_comics(img):
         put_button("Retry", onclick=start, color='primary', outline=True)
         
 def cartoon_twilight(img):
-    with use_scope("scope_cartoon_twilight", clear=True):
-        progress_bar()
+    remove(scope="scope_filter_sepia")
+    remove(scope="scope_filter_lighting")
+    remove(scope = "scope_filter_clarendon")
+    remove(scope = "scope_cartoon_comics")
+    remove(scope = "scope_cartoon_twilight")
+    remove(scope = "scope_cartoon_classic")
+    with use_scope("scope_cartoon_twilight"):
         image = img['content']
         image = np.frombuffer(image, np.uint8)
         image = cv2.imdecode(image, cv2.IMREAD_COLOR)
@@ -267,7 +284,7 @@ def cartoon_twilight(img):
         blurred = cv2.bilateralFilter(array, d=10, sigmaColor=250,sigmaSpace=250)
         #blurred and edges
         result = cv2.bitwise_and(blurred, blurred, mask=edges)
-        is_success, im_buf_arr = cv2.imencode(".png", result)
+        is_success, im_buf_arr = cv2.imencode(".jpg", result)
         byte_im = im_buf_arr.tobytes()
         put_markdown('## **Result**')
         put_row([put_text("Before: "), None, put_text("After: ")])
@@ -277,14 +294,19 @@ def cartoon_twilight(img):
         put_button("Retry", onclick=start, color='primary', outline=True)
         
 def cartoon_classic(img):
-    with use_scope("scope_cartoon_classic", clear=True):
-        progress_bar()
+    remove(scope="scope_filter_sepia")
+    remove(scope="scope_filter_lighting")
+    remove(scope = "scope_filter_clarendon")
+    remove(scope = "scope_cartoon_comics")
+    remove(scope = "scope_cartoon_twilight")
+    remove(scope = "scope_cartoon_classic")
+    with use_scope("scope_cartoon_classic"):
         image = img['content']
         image = np.frombuffer(image, np.uint8)
         image = cv2.imdecode(image, cv2.IMREAD_COLOR)
         coloured = ColourQuantization(image)
         result = Countours(coloured)
-        is_success, im_buf_arr = cv2.imencode(".png", result)
+        is_success, im_buf_arr = cv2.imencode(".jpg", result)
         byte_im = im_buf_arr.tobytes()
         put_markdown('## **Result**')
         put_row([put_text("Before: "), None, put_text("After: ")])
@@ -305,7 +327,10 @@ def check_sigma_r(sigma_r):
         return 'The range of sigma r should between 0 to 1.'
                
 def watercolor(img):
-    with use_scope("scope_watercolor", clear=True):
+    remove(scope="scope_filter_sepia")
+    remove(scope="scope_filter_lighting")
+    remove(scope = "scope_filter_clarendon")
+    with use_scope("scope_watercolor"):
         data = input_group("WATERCOLOR",[
         input("Adjust sigma s: ", name='sigma_s', type=FLOAT, validate=check_sigma_s, placeholder= "20", help_text="Control smoothening", required=True),
         input("Adjust sigma r: ", name='sigma_r', type=FLOAT, validate=check_sigma_s, placeholder= "0.4", help_text="Control smoothening", required=True),
@@ -318,7 +343,10 @@ def watercolor(img):
         input("Adjust segmentation minimun component size: ", name='min',  type=NUMBER, placeholder= "10", help_text="Minimum component size. Enforced using postprocessing", required=True),
         ])
         
-        progress_bar()
+        put_processbar('bar')
+        for i in range(1, 11):
+            set_processbar('bar', i / 10)
+            time.sleep(0.1)
         
         result = img['content']
         result = np.frombuffer(result, np.uint8)
@@ -333,7 +361,7 @@ def watercolor(img):
         # color tone image
         for image_name in os.listdir(path):
             input_path = os.path.join(path, image_name)
-            if image_name== data['color_tone']+".png":
+            if image_name== data['color_tone']+".jpg":
                 src_img = open(input_path, 'rb').read()    
         
         src_img = np.frombuffer(src_img, np.uint8)
@@ -371,7 +399,7 @@ def watercolor(img):
             segment_img = result[logical_segment]
             result[logical_segment] = np.mean(segment_img, axis=0)
         
-        is_success, im_buf_arr = cv2.imencode(".png", result)
+        is_success, im_buf_arr = cv2.imencode(".jpg", result)
         byte_im = im_buf_arr.tobytes()
 
         put_markdown('## **Result**')
@@ -402,13 +430,19 @@ def color_change(bw_sketch_gray,color):
     return bw_sketch_rgb
 
 def sketch(img):
-    with use_scope("scope_sketch", clear=True):
+    remove(scope="scope_filter_sepia")
+    remove(scope="scope_filter_lighting")
+    remove(scope = "scope_filter_clarendon")
+    with use_scope("scope_sketch"):
         data = input_group("SKETCH",[
         select("Choose a sketch color: ", ['red', 'orange','yellow','green','blue','purple', 'black'], name="color", required=True),
         input('Adjust kernel size: ', name='ksize', type=NUMBER,  min = 3, max=199, step=2, validate=check_kernel_odd,  placeholder= "111", help_text="Control bluriness", required=True)
         ])
 
-        progress_bar()
+        put_processbar('bar')
+        for i in range(1, 11):
+            set_processbar('bar', i / 10)
+            time.sleep(0.1)
 
         result = img['content'] #bytes
         result = np.frombuffer(result, np.uint8)
@@ -428,7 +462,7 @@ def sketch(img):
         sketch_img = cv2.divide(grey_img,invblur_img, scale=256.0)
         if data['color'] != 'black':
             sketch_img = cv2.cvtColor(color_change(sketch_img,data['color']), cv2.COLOR_BGR2RGB)
-        is_success, im_buf_arr = cv2.imencode(".png", sketch_img)
+        is_success, im_buf_arr = cv2.imencode(".jpg", sketch_img)
         byte_im = im_buf_arr.tobytes()
 
         put_markdown('## **Result**')

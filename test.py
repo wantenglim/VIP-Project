@@ -37,8 +37,7 @@ def demo():
     put_row([None, None, put_image(logo, width='110px'), put_markdown('# Pixtono'), None, None],size=50)
     put_markdown('### A Non-Photorealistic Rendering and Pixelation of Face Images Application 📸')
     put_markdown('#### TDS3651 Visual Information Processing - Project 🎓')
-    put_markdown('##### Group 5: Lee Min Xuan (1181302793) Lim Wan Teng (1181100769) Tan Jia Qi (1191301879) Vickey Tan (1181101852) 👩‍💻')
-    
+    put_markdown('##### Group 5: Lee Min Xuan (1181302793) Lim Wan Teng (1181100769) Tan Jia Qi (1191301879) Vickey Tan (1181101852) 👩‍💻')  
     userinput()
 
 def userinput():
@@ -69,7 +68,6 @@ def img_preprocess(img):
         
 def img_enhance(img):
     #codes
-    
     operation = radio("Choose",options = ['Image Filtering','Image Background Changing','Image Style Transformation'])
     if operation == "Image Filtering":
         img_filter(img)
