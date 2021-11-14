@@ -72,7 +72,7 @@ def progress_bar():
         time.sleep(0.1)
         
 def main_function(img):
-    main_function = radio("Choose a main features",options = ['Cartoonization','Oil Paint','Pencil Sketch','Watercolour'], required=True)
+    main_function = radio("Choose a main features",options = ['Cartoonization','Oil Paint','Pencil Sketch','Watercolour','No effect'], required=True)
     # give user stack filter once more
     if main_function == "Cartoonization":
         cartoonization(img)
@@ -82,6 +82,8 @@ def main_function(img):
         sketch(img)
     elif main_function == "Watercolour":
         watercolor(img)
+    elif main_function == "No effect":
+        return img
 # ---------------------------------ENHANCEMENT--------------------------------        
 # ---------------------------------FILTERING--------------------------------
 def filter_image(img,lj_map):
@@ -197,7 +199,7 @@ def filter_clarendon(img,lj_map):
 def img_background(img):
     background_preview = open(path+'/background-preview.png', 'rb').read()  
     popup('Filter Preview', [put_image(background_preview,width='1600px'),put_buttons(['close_popup()'], onclick=lambda _: close_popup())])
-    background_choice = radio("Choose",options = ['Transparent Background','Solid Color Background',
+    background_choice = radio("Choose to edit image background",options = ['Transparent Background','Solid Color Background',
                                                     'Customize & Patterned Background', 'No Change'], required=True)
     if background_choice == "Transparent Background" :
         bg_remover(img)
@@ -227,9 +229,9 @@ def bg_remover(img):
 def bg_solid(img):
     with use_scope("scope_bg_solid", clear=True):
         html_colors = ['Aqua','Beige','Black','Brown','Coral',
-                    'Dark grey','Fuchsia','Green','HotPink','Indigo',
-                    'LightBlue','Lime','Medium Blue','Orange','Pink',
-                    'Rebecca Purple','Red','Teal','White','Yellow']    
+                    'DarkGrey','Fuchsia','Green','HotPink','Indigo',
+                    'LightBlue','Lime','MediumBlue','Orange','Pink',
+                    'RebeccaPurple','Red','Teal','White','Yellow']    
         progress_bar()
         image = img['content']
         result = remove(image)
@@ -242,7 +244,7 @@ def bg_solid(img):
         img_solidB.convert("RGB")
         img_solidB.save('img_solidB.png', format='PNG')
         result = open('img_solidB.png','rb').read()
-        put_markdown('## **Background Removing Result:**')
+        put_markdown('## **Solid Color Background Result:**')
         put_row([put_text("Before: "), None, put_text("After: ")])
         put_row([put_image(img['content']), None, put_image(result)])
         img['content'] = result
@@ -281,7 +283,7 @@ def bg_cuspat(img):
         background.convert("RGB")
         background.save('img_cuspatB.png', format='PNG')
         result = open('img_cuspatB.png','rb').read()
-        put_markdown('## **Background Removing Result:**')
+        put_markdown('## **Background Changing Result:**')
         put_row([put_text("Before: "), None, put_text("After: ")])
         put_row([put_image(img['content']), None, put_image(result)])
         img['content'] = result
@@ -487,9 +489,10 @@ def watercolor(img):
         put_row([put_image(img['content']), None, put_image(byte_im)])        
         img['content'] = byte_im
         put_file(label="Download",name='watercolor_'+ img['filename'], content=img['content']).onclick(lambda: toast('Your image is downloaded.'))
-        put_html('<hr>')
-        put_markdown("**If you wish to proceed to pixelation, click the next button.**")
-        put_button("Next", onclick=lambda: toast("Link to pixelation"), color='primary', outline=True)
+        #put_html('<hr>')
+        #put_markdown("**If you wish to proceed to pixelation, click the next button.**")
+        #put_button("Next", onclick=lambda: toast("Link to pixelation"), color='primary', outline=True)
+        put_button("Retry", onclick=start, color='primary', outline=True)
 
 # ---------------------------------SKETCH--------------------------------
 
@@ -544,12 +547,90 @@ def sketch(img):
         put_row([put_image(img['content']), None, put_image(byte_im)])
         img['content'] = byte_im
         put_file(label="Download",name='sketch_'+ img['filename'], content=img['content']).onclick(lambda: toast('Your image is downloaded.'))
-        put_html('<hr>')
-        put_markdown("**If you wish to proceed to pixelation, click the next button.**")
-        put_button("Next", onclick=lambda: toast("Link to pixelation"), color='primary', outline=True)
+        #put_html('<hr>')
+        #put_markdown("**If you wish to proceed to pixelation, click the next button.**")
+        #put_button("Next", onclick=lambda: toast("Link to pixelation"), color='primary', outline=True)
+        put_button("Retry", onclick=start, color='primary', outline=True)
 
-#def pixelate(img):
+# ---------------------------------PIXELIZATION--------------------------------
+'''
+def colorClustering(idx, img, k):
+    clusterValues = []
+    for _ in range(0, k):
+        clusterValues.append([])
+    
+    for r in range(0, idx.shape[0]):
+        for c in range(0, idx.shape[1]):
+            clusterValues[idx[r][c]].append(img[r][c])
 
+    imgC = np.copy(img)
 
+    clusterAverages = []
+    for i in range(0, k):
+        clusterAverages.append(np.average(clusterValues[i], axis=0))
+    
+    for r in range(0, idx.shape[0]):
+        for c in range(0, idx.shape[1]):
+            imgC[r][c] = clusterAverages[idx[r][c]]
+            
+    return imgC
+
+def segmentImgClrRGB(img, k):
+    
+    imgC = np.copy(img)
+    
+    h = img.shape[0]
+    w = img.shape[1]
+    
+    imgC.shape = (img.shape[0] * img.shape[1], 3)
+    
+    #5. Run k-means on the vectorized responses X to get a vector of labels (the clusters); 
+    #  
+    kmeans = KMeans(n_clusters=k, random_state=0).fit(imgC).labels_
+    
+    #6. Reshape the label results of k-means so that it has the same size as the input image
+    #   Return the label image which we call idx
+    kmeans.shape = (h, w)
+
+    return kmeans
+
+def kMeansImage(image, k):
+    idx = segmentImgClrRGB(image, k)
+    return colorClustering(idx, image, k)
+
+def pixelate(img):
+    with use_scope("scope_pixelate", clear=True):
+        progress_bar()
+        def is_valid(data):
+            if data <= 0:
+                return 'Value cannot be negative!'
+            elif data < 2:
+                return 'Value must be bigger than 1!'
+        
+        pixel = input_group("Pixel Size",[
+        input('Adjust pixel size: ', name='pixelsize', type=NUMBER,  min = 2, max=128, validate=is_valid,  placeholder= "8", 
+              help_text="Lower pixel size -> Clearer & more detailed image", required=True),
+        input('Adjust number of colors: ', name='pixelcolor', type=NUMBER,  min = 2, max=128, validate=is_valid,  placeholder= "6", 
+              help_text="More no. of colors -> Clearer & more detailed image", required=True)
+        ])
+        pixel_size = pixel['pixelsize']
+        no_colors = pixel['pixelcolor']
+        image = img['content']
+        image = Image.open(io.BytesIO(image))
+        image.save('img_pixel.png', format='PNG')
+        img_pixelated = Image.open('img_pixel.png')        
+        img_pixelated = image.resize((image.size[0] // pixel_size, image.size[1] // pixel_size),Image.NEAREST)
+        img_pixelated = image.resize((image.size[0] * pixel_size, image.size[1] * pixel_size),Image.NEAREST)
+        img_pixelated = cv2.cvtColor(np.array(img_pixelated), cv2.COLOR_RGB2BGR)
+        #img_pixelated = kMeansImage(img_pixelated, 10) #5 colors user need to choose by themselves
+        result = Image.fromarray(img_pixelated)
+        #img_pixelated_color.save("04b.png", format="png")
+        
+        put_markdown('## **Pixelization Result**')
+        put_row([put_text("Before: "), None, put_text("After: ")])
+        put_row([put_image(img['content']), None, put_image(result)])
+        put_file(label="Download",name='pixel_'+ img['filename'], content=result).onclick(lambda: toast('Your image is downloaded.'))        
+        os.remove("img_pixel.png")
+'''
 if __name__ == '__main__':
     pywebio.start_server(start, port=80)
