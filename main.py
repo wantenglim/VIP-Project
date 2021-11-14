@@ -77,7 +77,8 @@ def main_function(img):
         
 # ---------------------------------FILTERING--------------------------------
 def filter_image(img,lj_map):
-
+    filter_preview = open(path+'/filter-preview.png', 'rb').read()  
+    popup('Filter Preview', [put_image(filter_preview,width='400px'),put_buttons(['close_popup()'], onclick=lambda _: close_popup())])
     operation = radio("Image Filter",options = ['Filter sepia','Filter lighting','Filter clarendon','No filter'])
     if operation == "Filter sepia":
         filter_sepia(img)
@@ -186,6 +187,8 @@ def filter_clarendon(img,lj_map):
 
 # ---------------------------------CARTOON--------------------------------
 def cartoonization(img):
+    cartoon_preview = open(path+'/cartoon-preview.png', 'rb').read()  
+    popup('Cartoonization Preview', [put_image(cartoon_preview,width='400px'),put_buttons(['close_popup()'], onclick=lambda _: close_popup())])
     cartoon_choice = radio("Cartoonization",options = ['Comics','Twilight','Classic'])
     if cartoon_choice == "Comics" :
         cartoon_comics(img)
