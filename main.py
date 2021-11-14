@@ -60,8 +60,7 @@ def startpage():
     put_markdown('### A Non-Photorealistic Rendering and Pixelation of Face Images Application 📸')
     put_markdown('#### TDS3651 Visual Information Processing - Project 🎓')
     put_markdown('##### Group 5: Lee Min Xuan (1181302793) Lim Wan Teng (1181100769) Tan Jia Qi (1191301879) Vickey Tan (1181101852) 👩‍💻')
-
-    
+   
 def endpage():
     put_text('Thank you for using this application. Kindly fill up the feedback form to help us improve better. 😃')
     put_link('Feedback Form', url='https://forms.gle/iodfkvqG8DmBUzWA9', new_window=True)
@@ -127,7 +126,7 @@ def filter_sepia(img):
         put_row([put_text("Before: "), None, put_text("After: ")])
         put_row([put_image(img['content']), None, put_image(byte_im)])
         img['content'] = byte_im
-        put_file(label="Download",name='filter_'+ img['filename'], content=img['content'])
+        put_file(label="Download",name='filter_'+ img['filename'], content=img['content']).onclick(lambda: toast('Your image is downloaded.'))
         put_button("Retry", onclick=start, color='primary', outline=True)
         put_html('<hr>')
         
@@ -168,7 +167,7 @@ def filter_lighting(img):
         put_row([put_text("Before: "), None, put_text("After: ")])
         put_row([put_image(img['content']), None, put_image(byte_im)])
         img['content'] = byte_im
-        put_file(label="Download",name='filter_'+ img['filename'], content=img['content'])
+        put_file(label="Download",name='filter_'+ img['filename'], content=img['content']).onclick(lambda: toast('Your image is downloaded.'))
         put_button("Retry", onclick=start, color='primary', outline=True)
 
 def filter_clarendon(img,lj_map):
@@ -191,7 +190,7 @@ def filter_clarendon(img,lj_map):
         put_row([put_text("Before: "), None, put_text("After: ")])
         put_row([put_image(img['content']), None, put_image(byte_im)])
         img['content'] = byte_im
-        put_file(label="Download",name='filter_'+ img['filename'], content=img['content'])
+        put_file(label="Download",name='filter_'+ img['filename'], content=img['content']).onclick(lambda: toast('Your image is downloaded.'))
         put_button("Retry", onclick=start, color='primary', outline=True)
 
 # ---------------------------------BACKGROUND--------------------------------
@@ -223,7 +222,7 @@ def bg_remover(img):
         put_row([put_text("Before: "), None, put_text("After: ")])
         put_row([put_image(img['content']), None, put_image(result)])
         img['content'] = result
-        put_file(label="Download",name='filter_'+ img['filename'], content=result)
+        put_file(label="Download",name='transparentbg_'+ img['filename'], content=result).onclick(lambda: toast('Your image is downloaded.'))
         os.remove("img_transpB.png")
         put_button("Retry", onclick=start, color='primary', outline=True)
 
@@ -249,7 +248,7 @@ def bg_solid(img):
         put_row([put_text("Before: "), None, put_text("After: ")])
         put_row([put_image(img['content']), None, put_image(result)])
         img['content'] = result
-        put_file(label="Download",name='filter_'+ img['filename'], content=result)
+        put_file(label="Download",name='solidbg_'+ img['filename'], content=result).onclick(lambda: toast('Your image is downloaded.'))
         os.remove("img_transpB.png")
         os.remove("img_solidB.png")
         put_button("Retry", onclick=start, color='primary', outline=True)
@@ -288,7 +287,7 @@ def bg_cuspat(img):
         put_row([put_text("Before: "), None, put_text("After: ")])
         put_row([put_image(img['content']), None, put_image(result)])
         img['content'] = result
-        put_file(label="Download",name='filter_'+ img['filename'], content=result)
+        put_file(label="Download",name='newbg_'+ img['filename'], content=result).onclick(lambda: toast('Your image is downloaded.'))
         os.remove("img_transpB.png")
         os.remove("img_cuspatB.png")
         put_button("Retry", onclick=start, color='primary', outline=True)
@@ -350,7 +349,7 @@ def cartoon_comics(img):
         put_row([put_text("Before: "), None, put_text("After: ")])
         put_row([put_image(img['content']), None, put_image(result)])
         img['content'] = result
-        put_file(label="Download",name='filter_'+ img['filename'], content=img['content'])
+        put_file(label="Download",name='comics_'+ img['filename'], content=img['content']).onclick(lambda: toast('Your image is downloaded.'))
         os.remove("cartooned.png") 
         put_button("Retry", onclick=start, color='primary', outline=True)
         
@@ -384,7 +383,7 @@ def cartoon_twilight(img):
         put_row([put_text("Before: "), None, put_text("After: ")])
         put_row([put_image(img['content']), None, put_image(byte_im)])
         img['content'] = byte_im
-        put_file(label="Download",name='filter_'+ img['filename'], content=img['content'])
+        put_file(label="Download",name='twilight_'+ img['filename'], content=img['content']).onclick(lambda: toast('Your image is downloaded.'))
         put_button("Retry", onclick=start, color='primary', outline=True)
         
 def cartoon_classic(img):
@@ -401,7 +400,7 @@ def cartoon_classic(img):
         put_row([put_text("Before: "), None, put_text("After: ")])
         put_row([put_image(img['content']), None, put_image(byte_im)])
         img['content'] = byte_im
-        put_file(label="Download",name='filter_'+ img['filename'], content=img['content'])
+        put_file(label="Download",name='classic_'+ img['filename'], content=img['content']).onclick(lambda: toast('Your image is downloaded.'))
         put_button("Retry", onclick=start, color='primary', outline=True)
 
 # ---------------------------------WATERCOLOR--------------------------------
@@ -550,6 +549,9 @@ def sketch(img):
         put_html('<hr>')
         put_markdown("**If you wish to proceed to pixelation, click the next button.**")
         put_button("Next", onclick=lambda: toast("Link to pixelation"), color='primary', outline=True)
-    
+
+#def pixelate(img):
+
+
 if __name__ == '__main__':
     pywebio.start_server(start, port=80)
