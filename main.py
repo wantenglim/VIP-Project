@@ -60,7 +60,7 @@ def startpage():
     put_markdown('### A Non-Photorealistic Rendering and Pixelation of Face Images Application 📸')
     put_markdown('#### TDS3651 Visual Information Processing - Project 🎓')
     put_markdown('##### Group 5: Lee Min Xuan (1181302793) Lim Wan Teng (1181100769) Tan Jia Qi (1191301879) Vickey Tan (1181101852) 👩‍💻')
-   
+
 def endpage():
     put_text('Thank you for using this application. Kindly fill up the feedback form to help us improve better. 😃')
     put_link('Feedback Form', url='https://forms.gle/iodfkvqG8DmBUzWA9', new_window=True)
@@ -306,10 +306,10 @@ def cartoonization(img):
 
 #Create Edge Mask
 def edge_mask(img, line_size, blur_value):
-  gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-  gray_blur = cv2.medianBlur(gray, blur_value)
-  edges = cv2.adaptiveThreshold(gray_blur, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, line_size, blur_value)
-  return edges
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    gray_blur = cv2.medianBlur(gray, blur_value)
+    edges = cv2.adaptiveThreshold(gray_blur, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, line_size, blur_value)
+    return edges
 
 def ColourQuantization(image, K=9):
     Z = image.reshape((-1, 3)) 
