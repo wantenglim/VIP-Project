@@ -1,7 +1,6 @@
-from pywebio.exceptions import SessionClosedException
-from pywebio.exceptions import SessionClosedException
 from pywebio.input import *
 from pywebio.output import *
+from pywebio.exceptions import SessionClosedException
 import numpy as np
 import cv2
 import math
@@ -17,23 +16,19 @@ import pywebio
 import sys
 import asyncio
 
+if sys.platform == 'win32':
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+path = "./assets"
+
 def demo():
-    logo = open('VIP-Project/logo-beige.png', 'rb').read()  
+    logo = open(path+'/logo-beige.png', 'rb').read()  
     put_row([None, None, put_image(logo, width='110px'), put_markdown('# Pixtono'), None, None],size=50)
     put_markdown('### A Non-Photorealistic Rendering and Pixelation of Face Images Application 📸')
     put_markdown('#### TDS3651 Visual Information Processing - Project 🎓')
     put_markdown('##### Group 5: Lee Min Xuan (1181302793) Lim Wan Teng (1181100769) Tan Jia Qi (1191301879) Vickey Tan (1181101852) 👩‍💻')
     
     userinput()
-    #put example images for preprocess, style transform one by one
-    #put_image(logo, width='px') enhance
-    #put_image(logo, width='px') filter
-    #put_image(logo, width='px') segment
-    #put_image(logo, width='px') cartoon
-    #put_image(logo, width='px') oil paint
-    #put_image(logo, width='px') pencil sketch
-    #put_image(logo, width='px') watercolour
-    #put_image(logo, width='px') pixelization
 
 def userinput():
     # upload image and direct to image preprocessing (enhancement, filtering, fg-bg segmentation)
@@ -49,7 +44,7 @@ def userinput():
         img_preprocess(img)
     elif operation == "Image Style Transformation":
         img_styletransform(img)
-
+        
 #------------------------Image Preprocessing------------------------
 def img_preprocess(img):
     put_text('Please choose the function preferred, you can continue with other function after one.')
@@ -100,7 +95,7 @@ def img_filter(img):
         #print(result)
         is_success, im_buf_arr = cv2.imencode(".jpg", result)
         byte_im = im_buf_arr.tobytes()
-        put_markdown('## **Result**')
+        put_markdown('## **Filtering Result:**')
         put_row([put_text("Before: "), None, put_text("After: ")])
         put_row([put_image(img['content']), None, put_image(byte_im)])
         img['content'] = byte_im
@@ -142,7 +137,7 @@ def img_filter(img):
                     result = dst
         is_success, im_buf_arr = cv2.imencode(".jpg", result)
         byte_im = im_buf_arr.tobytes()
-        put_markdown('## **Result**')
+        put_markdown('## **Filtering Result:**')
         put_row([put_text("Before: "), None, put_text("After: ")])
         put_row([put_image(img['content']), None, put_image(byte_im)])
         img['content'] = byte_im
@@ -164,7 +159,7 @@ def img_filter(img):
         result = dst
         is_success, im_buf_arr = cv2.imencode(".jpg", result)
         byte_im = im_buf_arr.tobytes()
-        put_markdown('## **Result**')
+        put_markdown('## **Filtering Result:**')
         put_row([put_text("Before: "), None, put_text("After: ")])
         put_row([put_image(img['content']), None, put_image(byte_im)])
         img['content'] = byte_im
@@ -172,7 +167,7 @@ def img_filter(img):
         #put_button("Retry", onclick=img_filter, color='primary', outline=True)
         return img['content']
        
-    lj_map = open('VIP-Project/lj_map.png', 'rb').read()
+    lj_map = open(path+'/lj_map.png', 'rb').read()
     operation = radio("Choose",options = ['filter_sepia','filter_lighting','filter_clarendon'])
     if operation == "filter_sepia":
         filter_sepia(img)
@@ -213,7 +208,7 @@ def img_styletransform(img):
         img_pencilsketch(img)
     elif operation == "Watercolour Painting":
         img_watercolour(img)
-
+        
 def img_cartoon(img):
     
     put_text('Do you want to continue with pixelization?')
@@ -233,6 +228,60 @@ def img_oilpaint(img):
         endpage()
         
 def img_pencilsketch(img):
+    def check_kernel_odd(ksize):
+        if ksize % 2 == 0:
+            return 'Kernel size must be an odd number.'
+        elif ksize < 3 or ksize > 200:
+            return 'The suggested kernel size is in range 3 to 199.'
+
+    def color_change(bw_sketch_gray,color):
+        bw_sketch_rgb = cv2.cvtColor(bw_sketch_gray, cv2.COLOR_GRAY2RGB)
+        color_dict = {'red':[255,0,0], 'orange':[255,128,0],'yellow':[255,255,0],'green':[0,255,0],'blue':[0,0,255],'purple':[127,0,255]}
+        for i in range (bw_sketch_rgb.shape[0]):
+            for j in range (bw_sketch_rgb.shape[1]):
+                if (bw_sketch_rgb[i,j] != [255,255,255]).any():
+                    bw_sketch_rgb[i,j] = color_dict[color]
+                
+        return bw_sketch_rgb
+    data = input_group("SKETCH",[
+    select("Choose a sketch color: ", ['red', 'orange','yellow','green','blue','purple', 'black'], name="color", required=True),
+    input('Adjust kernel size: ', name='ksize', type=NUMBER,  min = 3, max=199, step=2, validate=check_kernel_odd,  placeholder= "111", help_text="Control bluriness", required=True)
+    ])
+
+    put_processbar('bar')
+    for i in range(1, 11):
+        set_processbar('bar', i / 10)
+        time.sleep(0.1)
+
+    result = img['content'] #bytes
+    result = np.frombuffer(result, np.uint8)
+    result = cv2.imdecode(result, cv2.IMREAD_COLOR)
+    grey_img = cv2.cvtColor(result, cv2.COLOR_BGR2GRAY)
+
+    # Invert Image
+    invert_img = cv2.bitwise_not(grey_img)
+
+    # Blur image
+    blur_img = cv2.GaussianBlur(invert_img, (data['ksize'],data['ksize']),0)
+
+    # Invert Blurred Image
+    invblur_img = cv2.bitwise_not(blur_img)
+
+    # Sketch Image
+    sketch_img = cv2.divide(grey_img,invblur_img, scale=256.0)
+    if data['color'] != 'black':
+         sketch_img = cv2.cvtColor(color_change(sketch_img,data['color']), cv2.COLOR_BGR2RGB)
+    is_success, im_buf_arr = cv2.imencode(".jpg", sketch_img)
+    byte_im = im_buf_arr.tobytes()
+
+    put_markdown('## **Pencil Sketch Result**')
+    put_row([put_text("Before: "), None, put_text("After: ")])
+    put_row([put_image(img['content']), None, put_image(byte_im)])
+    img['content'] = byte_im
+    put_file(label="Download",name='sketch_'+ img['filename'], content=img['content']).onclick(lambda: toast('Your image is downloaded.'))
+    put_html('<hr>')
+    #put_markdown("**If you wish to proceed to pixelation, click the next button.**")
+    #put_button("Next", onclick=lambda: toast("Link to pixelation"), color='primary', outline=True)    
     
     put_text('Do you want to continue with pixelization?')
     operation = radio("Choose",options = ['Yes','No'])
@@ -242,6 +291,93 @@ def img_pencilsketch(img):
         endpage()
         
 def img_watercolour(img):
+    def check_sigma_s(sigma_s):
+        if sigma_s < 0 or sigma_s > 200:
+            return 'The range of sigma s should between 0 to 200.'
+
+    def check_sigma_r(sigma_r):
+        if sigma_r < 0 or sigma_r > 1:
+            return 'The range of sigma r should between 0 to 1.'
+
+    data = input_group("WATERCOLOR",[
+    input("Adjust sigma s: ", name='sigma_s', type=FLOAT, validate=check_sigma_s, placeholder= "20", help_text="Control smoothening", required=True),
+    input("Adjust sigma r: ", name='sigma_r', type=FLOAT, validate=check_sigma_s, placeholder= "0.4", help_text="Control smoothening", required=True),
+    select("Choose a color tone: ", ['blue','brown','gray', 'green', 'pink', 'purple','yellow'], name="color_tone", required=True),
+    input("Adjust spatial window radius: ", name='spatial_radius', type=FLOAT, placeholder= "30", help_text="The spatial window radius for Mean Shift Filtering", required=True),
+    input("Adjust color window radius: ", name='color_radius', type=FLOAT, placeholder= "30", help_text="The color window radius for Mean Shift Filtering", required=True),
+    input("Adjust maximum level of pyramid: ", name='max', type=NUMBER, placeholder= "3", help_text="Maximum level of the pyramid for the segmentation", required=True),
+    input("Adjust segmentation scale: ", name='scale', type=FLOAT, placeholder= "40", help_text="Higher means larger segment clusters", required=True),
+    input("Adjust segmentation sigma: ", name='sigma_seg', type=FLOAT, placeholder= "0.4", help_text="Width (standard deviation) of Gaussian kernel used in preprocessing", required=True),
+    input("Adjust segmentation minimun component size: ", name='min',  type=NUMBER, placeholder= "10", help_text="Minimum component size. Enforced using postprocessing", required=True),
+    ])
+        
+    put_processbar('bar')
+    for i in range(1, 11):
+        set_processbar('bar', i / 10)
+        time.sleep(0.1)
+        
+    result = img['content']
+    result = np.frombuffer(result, np.uint8)
+    result = cv2.imdecode(result, cv2.IMREAD_COLOR)
+    result = cv2.cvtColor(result, cv2.COLOR_BGR2RGB)
+        
+    # 1. Edge Preserving Filter
+    # sigma s, sigma r
+    result = cv2.edgePreservingFilter(result, flags=1, sigma_s=data['sigma_s'], sigma_r=data['sigma_r'],)
+        
+    # 2. Color Adjustment
+    # color tone image
+    for image_name in os.listdir(path):
+        input_path = os.path.join(path, image_name)
+        if image_name== data['color_tone']+".jpg":
+            src_img = open(input_path, 'rb').read()    
+        
+    src_img = np.frombuffer(src_img, np.uint8)
+    src_img = cv2.imdecode(src_img, cv2.IMREAD_COLOR)
+    src_lab = cv2.cvtColor(src_img, cv2.COLOR_BGR2LAB).astype(np.float32)
+    src_mean, src_stddev = cv2.meanStdDev(src_lab)
+
+    result_lab = cv2.cvtColor(result, cv2.COLOR_RGB2LAB).astype(np.float32)
+    result_mean, result_stddev = cv2.meanStdDev(result_lab)
+
+    result_lab -= result_mean.reshape((1, 1, 3))
+    result_lab = np.multiply(result_lab, np.divide(src_stddev.flatten(), result_stddev.flatten()).reshape((1, 1, 3)))
+    result_lab += src_mean.reshape((1, 1, 3))
+    result_lab = np.clip(result_lab, 0, 255)
+    result = cv2.cvtColor(result_lab.astype(np.uint8), cv2.COLOR_LAB2RGB)
+ 
+    # 3. Mean Shift Filtering
+    '''
+    sp – The spatial window radius.
+    sr – The color window radius.
+    maxLevel – Maximum level of the pyramid for the segmentation.
+    '''
+    result = cv2.pyrMeanShiftFiltering(result, sp=data['spatial_radius'], sr=data['color_radius'], maxLevel=data['max'])
+
+    # 4. Image Segmentation and Fill Mean Value
+    '''
+    scale(float): Free parameter. Higher means larger clusters.
+    sigma(float): Width (standard deviation) of Gaussian kernel used in preprocessing.
+    min_size(int): Minimum component size. Enforced using postprocessing.
+    '''
+    segments = felzenszwalb(result, scale=data['scale'], sigma=data['sigma_seg'], min_size=data['min'])
+
+    for i in range(np.max(segments)):
+        logical_segment = segments == i
+        segment_img = result[logical_segment]
+        result[logical_segment] = np.mean(segment_img, axis=0)
+        
+    is_success, im_buf_arr = cv2.imencode(".jpg", result)
+    byte_im = im_buf_arr.tobytes()
+
+    put_markdown('## **Watercolour Painting Result**')
+    put_row([put_text("Before: "), None, put_text("After: ")])
+    put_row([put_image(img['content']), None, put_image(byte_im)])        
+    img['content'] = byte_im
+    put_file(label="Download",name='watercolor_'+ img['filename'], content=img['content']).onclick(lambda: toast('Your image is downloaded.'))
+    put_html('<hr>')
+    #put_markdown("**If you wish to proceed to pixelation, click the next button.**")
+    #put_button("Next", onclick=lambda: toast("Link to pixelation"), color='primary', outline=True)
     
     put_text('Do you want to continue with pixelization?')
     operation = radio("Choose",options = ['Yes','No'])
