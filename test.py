@@ -1,23 +1,34 @@
+import pywebio
 from pywebio.input import *
 from pywebio.output import *
-from pywebio.exceptions import SessionClosedException
-import numpy as np
-import cv2
-import math
-import os
-from matplotlib import pyplot as plt
-import time
-import json
 from pywebio import start_server
-from imgaug import augmenters as iaa
-from skimage.segmentation import felzenszwalb, slic, quickshift, watershed
-from skimage.segmentation import mark_boundaries
-import pywebio
+from pywebio.exceptions import SessionClosedException
 import sys
 import asyncio
+import cv2
+from PIL import Image
+from PIL import ImageFile
+import io
+from io import BytesIO
+import os
+import math
+import numpy as np
+from numpy import linalg as LA
+import time
+import json
+import skimage
+from skimage.segmentation import felzenszwalb, slic, quickshift, watershed
+from skimage.segmentation import mark_boundaries
+from rembg.bg import remove
+from sklearn.cluster import KMeans
+from imgaug import augmenters as iaa
+from matplotlib import pyplot as plt
 
 if sys.platform == 'win32':
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+# Uncomment the following line if working with truncated image formats (ex. JPEG / JPG)
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 path = "./assets"
 
@@ -187,14 +198,88 @@ def img_filter(img):
         
 def img_background(img):
     #codes
+    html_colors = ['Aqua','Beige','Black','Brown','Coral',
+                    'Dark grey','Fuchsia','Green','HotPink','Indigo',
+                    'LightBlue','Lime','Medium Blue','Orange','Pink',
+                    'Rebecca Purple','Red','Teal','White','Yellow']
+    ready_background = ['Horizontal-1','Horizontal-2','Horizontal-3','Horizontal-4','Horizontal-5',
+                        'Square-1','Square-2','Square-3','Square-4','Square-5',
+                        'Vertical-1','Vertical-2','Vertical-3','Vertical-4','Vertical-5']
     
-    operation = radio("Choose",options = ['Image Enhancement','Image Filtering','Image Background Changing'])
+    def bg_remover(img):
+        result = remove(img)
+        img_transpB = Image.open(io.BytesIO(result)).convert("RGBA")
+        put_markdown('## **Background Removing Result:**')
+        put_row([put_text("Before: "), None, put_text("After: ")])
+        put_row([put_image(img['content']), None, put_image(img_transpB)])
+        put_file(label="Download",name='filter_'+ img['filename'], content=img_transpB)
+        return img_transpB
+    
+    def bg_solid(img):
+        bgsolid_preview = open(path+'/background-preview-solid.png', 'rb').read()  
+        popup('Background Solid Color List', [put_image(bgsolid_preview,width='400px'),put_buttons(['close_popup()'], onclick=lambda _: close_popup())])
+        color_choice = select(name='solidbackground_colors', label='Background Colour Picker:', options=html_colors)
+        img_solidB = Image.new("RGBA", img.size, color_choice) 
+        img_solidB.paste(img, mask=img)
+        img_solidB.convert("RGB")
+        put_markdown('## **Background Changing Result:**')
+        put_row([put_text("Before: "), None, put_text("After: ")])
+        put_row([put_image(img['content']), None, put_image(img_solidB)])
+        put_file(label="Download",name='filter_'+ img['filename'], content=img_solidB)
+        return img_solidB
+    
+    def bg_pattern(img):
+        bgpattern_preview = open(path+'/background-preview-pattern.png', 'rb').read()  
+        popup('Background Pattern List', [put_image(bgpattern_preview,width='900px'),put_buttons(['close_popup()'], onclick=lambda _: close_popup())])
+        pattern_choice = select(name='patternbackground_numbers', label='Background Pattern Picker:', options=ready_background)
+        foreground = img
+        background = Image.open(path+'/background/'+pattern_choice+'.png')
+        background = background.convert("RGBA")
+        width = (background.width - foreground.width) // 2
+        height = (background.height - foreground.height) // 2
+        background.paste(foreground, (width, height), foreground)
+        img_patternB = background
+        put_markdown('## **Background Changing Result:**')
+        put_row([put_text("Before: "), None, put_text("After: ")])
+        put_row([put_image(img['content']), None, put_image(img_patternB)])
+        put_file(label="Download",name='filter_'+ img['filename'], content=img_patternB)
+        return img_patternB
+
+    def bg_custom(img):
+        put_text('Please upload your own background image. ')
+        background = file_upload("Select a image:", accept="image/*") 
+        foreground = img
+        #background = Image.open(path+'/background/'+pattern_choice+'.png')
+        background = background.convert("RGBA")
+        width = (background.width - foreground.width) // 2
+        height = (background.height - foreground.height) // 2
+        background.paste(foreground, (width, height), foreground)
+        img_customB = background
+        put_markdown('## **Background Changing Result:**')
+        put_row([put_text("Before: "), None, put_text("After: ")])
+        put_row([put_image(img['content']), None, put_image(img_customB)])
+        put_file(label="Download",name='filter_'+ img['filename'], content=img_customB)  
+        return img_customB
+
+    put_text('You ')
+    bg_choice = radio("Choose",options = ['Background Removing (Transparent)','Background Changing (Solid Color)',
+                                            'Background Changing (Pattern)','Background Changing (Customize)'])
+    if bg_choice == "Background Removing (Transparent)":
+        bg_output = bg_remover(img)
+    elif bg_choice == "Background Changing (Solid Color":
+        bg_output = bg_solid(img)
+    elif bg_choice == "Background Changing (Pattern)":
+        bg_output = bg_pattern(img)
+    elif bg_choice == "Background Changing (Customize)":
+        bg_output = bg_custom(img)
+
+    operation = radio("Choose",options = ['Image Enhancement','Image Filtering','Image Style Transformation'])
     if operation == "Image Enhancement":
-        img_enhance(img)
+        img_enhance(bg_output)
     elif operation == "Image Filtering":
-        img_filter(img)
-    elif operation == "Image Background Changing":
-        img_background(img)
+        img_filter(bg_output)
+    elif operation == "Image Style Tranformation":
+        img_styletransform(bg_output)
 
 #------------------------Image Style Transformation------------------------
 def img_styletransform(img):
@@ -209,8 +294,97 @@ def img_styletransform(img):
     elif operation == "Watercolour Painting":
         img_watercolour(img)
         
-def img_cartoon(img):
-    
+    def img_cartoon(img):
+
+        def edge_mask(img, line_size, blur_value):
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            gray_blur = cv2.medianBlur(gray, blur_value)
+            edges = cv2.adaptiveThreshold(gray_blur, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, line_size, blur_value)
+            return edges
+
+        def ColourQuantization(image, K=9):
+            Z = image.reshape((-1, 3)) 
+            Z = np.float32(Z) 
+            criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 100, 0.001)
+            compactness, label, center = cv2.kmeans(Z, K, None, criteria, 1, cv2.KMEANS_RANDOM_CENTERS)
+            center = np.uint8(center)
+            res = center[label.flatten()]
+            res2 = res.reshape((image.shape))
+            return res2
+
+        #to get countours
+        def Countours(image):
+            contoured_image = image
+            gray = cv2.cvtColor(contoured_image, cv2.COLOR_BGR2GRAY) 
+            edged = cv2.Canny(gray, 200, 200)
+            contours, hierarchy = cv2.findContours(edged, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)[-2:]
+            cv2.drawContours(contoured_image, contours, contourIdx=-1, color=6, thickness=1)
+            return contoured_image
+
+        def cartoon_comics(img):
+            image = img['content']
+            image = np.frombuffer(image, np.uint8)
+            image = cv2.imdecode(image, cv2.IMREAD_COLOR)
+            plt.figure(figsize= (8,10))
+            plt.contourf(np.flipud(image[:,:,0]),levels=4,cmap='inferno')
+            plt.axis('off')
+            plt.savefig('cartooned.png',bbox_inches='tight')
+            plt.close()
+            result = open('cartooned.png', 'rb').read()
+            put_markdown('## **Result**')
+            put_row([put_text("Before: "), None, put_text("After: ")])
+            put_row([put_image(img['content']), None, put_image(result)])
+            img['content'] = result
+            put_file(label="Download",name='filter_'+ img['filename'], content=img['content'])
+            os.remove("cartooned.png") 
+            #put_button("Retry", onclick=start, color='primary', outline=True)
+            
+        def cartoon_twilight(img):
+            image = img['content']
+            image = np.frombuffer(image, np.uint8)
+            image = cv2.imdecode(image, cv2.IMREAD_COLOR)
+            line_size = 7
+            blur_value = 7
+            edges = edge_mask(image, line_size, blur_value)
+            #colour quantization
+            #k value determines the number of colours in the image
+            total_color = 8
+            k=total_color
+            data = np.float32(image).reshape((-1, 3))
+            # Determine criteria
+            criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 20, 0.001)
+            # Implementing K-Means
+            ret, label, center = cv2.kmeans(data, k, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
+            center = np.uint8(center)
+            array = center[label.flatten()]
+            array = array.reshape(image.shape)
+            blurred = cv2.bilateralFilter(array, d=10, sigmaColor=250,sigmaSpace=250)
+            #blurred and edges
+            result = cv2.bitwise_and(blurred, blurred, mask=edges)
+            is_success, im_buf_arr = cv2.imencode(".jpg", result)
+            byte_im = im_buf_arr.tobytes()
+            put_markdown('## **Result**')
+            put_row([put_text("Before: "), None, put_text("After: ")])
+            put_row([put_image(img['content']), None, put_image(byte_im)])
+            img['content'] = byte_im
+            put_file(label="Download",name='filter_'+ img['filename'], content=img['content'])
+            #put_button("Retry", onclick=start, color='primary', outline=True)
+        
+        def cartoon_classic(img):
+            image = img['content']
+            image = np.frombuffer(image, np.uint8)
+            image = cv2.imdecode(image, cv2.IMREAD_COLOR)
+            coloured = ColourQuantization(image)
+            result = Countours(coloured)
+            is_success, im_buf_arr = cv2.imencode(".jpg", result)
+            byte_im = im_buf_arr.tobytes()
+            put_markdown('## **Result**')
+            put_row([put_text("Before: "), None, put_text("After: ")])
+            put_row([put_image(img['content']), None, put_image(byte_im)])
+            img['content'] = byte_im
+            put_file(label="Download",name='filter_'+ img['filename'], content=img['content'])
+            #put_button("Retry", onclick=start, color='primary', outline=True)
+
     put_text('Do you want to continue with pixelization?')
     operation = radio("Choose",options = ['Yes','No'])
     if operation == "Yes":
