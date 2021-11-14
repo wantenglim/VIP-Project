@@ -195,10 +195,8 @@ def filter_clarendon(img,lj_map):
 
 # ---------------------------------BACKGROUND--------------------------------
 def img_background(img):
-    backgroundsolid_preview = open(path+'/background-preview-solid.png', 'rb').read()  
-    popup('Filter Preview', [put_image(backgroundsolid_preview,width='800px'),put_buttons(['close_popup()'], onclick=lambda _: close_popup())])
-    backgroundpattern_preview = open(path+'/background-preview-pattern.png', 'rb').read()  
-    popup('Filter Preview', [put_image(backgroundpattern_preview,width='800px'),put_buttons(['close_popup()'], onclick=lambda _: close_popup())])
+    background_preview = open(path+'/background-preview.png', 'rb').read()  
+    popup('Filter Preview', [put_image(background_preview,width='1600px'),put_buttons(['close_popup()'], onclick=lambda _: close_popup())])
     background_choice = radio("Choose",options = ['Transparent Background','Solid Color Background',
                                                     'Customize & Patterned Background', 'No Change'], required=True)
     if background_choice == "Transparent Background" :
