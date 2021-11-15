@@ -51,7 +51,7 @@ def start():
         #step 4: style tranformation
         main_function(img)
         #step5: pixelization
-        #pixelate(img)
+        pixelate(img)
         endpage()
 
 def startpage():
@@ -402,6 +402,7 @@ def cartoon_classic(img):
         img['content'] = byte_im
         put_file(label="Download",name='classic_'+ img['filename'], content=img['content']).onclick(lambda: toast('Your image is downloaded.'))
         put_button("Retry", onclick=start, color='primary', outline=True)
+# ---------------------------------OIL PAINT--------------------------------
 
 # ---------------------------------WATERCOLOR--------------------------------
 
@@ -553,7 +554,7 @@ def sketch(img):
         put_button("Retry", onclick=start, color='primary', outline=True)
 
 # ---------------------------------PIXELIZATION--------------------------------
-'''
+
 def colorClustering(idx, img, k):
     clusterValues = []
     for _ in range(0, k):
@@ -613,24 +614,27 @@ def pixelate(img):
         input('Adjust number of colors: ', name='pixelcolor', type=NUMBER,  min = 2, max=128, validate=is_valid,  placeholder= "6", 
               help_text="More no. of colors -> Clearer & more detailed image", required=True)
         ])
+        
         pixel_size = pixel['pixelsize']
         no_colors = pixel['pixelcolor']
         image = img['content']
         image = Image.open(io.BytesIO(image))
-        image.save('img_pixel.png', format='PNG')
-        img_pixelated = Image.open('img_pixel.png')        
-        img_pixelated = image.resize((image.size[0] // pixel_size, image.size[1] // pixel_size),Image.NEAREST)
-        img_pixelated = image.resize((image.size[0] * pixel_size, image.size[1] * pixel_size),Image.NEAREST)
+        image.save('img_ori.png', format='PNG')
+        img_pixelated = Image.open('img_ori.png')        
+        img_pixelated = img_pixelated.resize((img_pixelated.size[0] // pixel_size, img_pixelated.size[1] // pixel_size),Image.NEAREST)
+        img_pixelated = img_pixelated.resize((img_pixelated.size[0] * pixel_size, img_pixelated.size[1] * pixel_size),Image.NEAREST)
+        img_pixelated.save("img_pixel.png", format="png")
         img_pixelated = cv2.cvtColor(np.array(img_pixelated), cv2.COLOR_RGB2BGR)
-        #img_pixelated = kMeansImage(img_pixelated, 10) #5 colors user need to choose by themselves
+        img_pixelated = kMeansImage(img_pixelated, 10) #5 colors user need to choose by themselves
+        img_pixelated = cv2.cvtColor(img_pixelated, cv2.COLOR_BGR2RGB)
         result = Image.fromarray(img_pixelated)
-        #img_pixelated_color.save("04b.png", format="png")
-        
+
         put_markdown('## **Pixelization Result**')
         put_row([put_text("Before: "), None, put_text("After: ")])
         put_row([put_image(img['content']), None, put_image(result)])
         put_file(label="Download",name='pixel_'+ img['filename'], content=result).onclick(lambda: toast('Your image is downloaded.'))        
+        os.remove("img_ori.png")
         os.remove("img_pixel.png")
-'''
+
 if __name__ == '__main__':
     pywebio.start_server(start, port=80)
