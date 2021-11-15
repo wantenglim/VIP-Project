@@ -35,7 +35,8 @@ if sys.platform == 'win32':
 path = "./assets"
 
 def start():
-    remove(scope="start_app")
+    pywebio.session.set_env(title='Pixtono')
+    #remove(scope="start_app")
     with use_scope("start_app", clear=True):
         #put_markdown('# **Multifunctional Face Image Processing**')
         startpage()
@@ -88,7 +89,7 @@ def main_function(img):
 # ---------------------------------FILTERING--------------------------------
 def filter_image(img,lj_map):
     filter_preview = open(path+'/filter-preview.png', 'rb').read()  
-    popup('Filter Preview', [put_image(filter_preview),put_buttons(['close_popup()'], onclick=lambda _: close_popup())])
+    popup('Filter Preview', [put_image(filter_preview),put_buttons(['close'], onclick=lambda _: close_popup())])
     operation = radio("Image Filter",options = ['Filter Sepia','Filter Lighting','Filter Clarendon','No Filter'], required=True)
     if operation == "Filter sepia":
         filter_sepia(img)
@@ -198,7 +199,7 @@ def filter_clarendon(img,lj_map):
 # ---------------------------------BACKGROUND--------------------------------
 def img_background(img):
     background_preview = open(path+'/background-preview.png', 'rb').read()  
-    popup('Background Preview', [put_image(background_preview),put_buttons(['close_popup()'], onclick=lambda _: close_popup())])
+    popup('Background Preview', [put_image(background_preview),put_buttons(['close'], onclick=lambda _: close_popup())])
     background_choice = radio("Background editing options",options = ['Transparent Background','Solid Color Background',
                                                     'Customize & Patterned Background', 'No Change'], required=True)
     if background_choice == "Transparent Background" :
@@ -295,7 +296,7 @@ def bg_cuspat(img):
 # ---------------------------------CARTOON--------------------------------
 def cartoonization(img):
     cartoon_preview = open(path+'/cartoon-preview.png', 'rb').read()  
-    popup('Cartoonization Preview', [put_image(cartoon_preview),put_buttons(['close_popup()'], onclick=lambda _: close_popup())])
+    popup('Cartoonization Preview', [put_image(cartoon_preview),put_buttons(['close'], onclick=lambda _: close_popup())])
     cartoon_choice = radio("Cartoonization",options = ['Comics','Twilight','Classic'], required=True)
     if cartoon_choice == "Comics" :
         cartoon_comics(img)
@@ -406,7 +407,7 @@ def cartoon_classic(img):
 # ---------------------------------OIL PAINT--------------------------------
 #def oilpaint(img):
     #oilpaint_preview = open(path+'/oilpaint-preview.png', 'rb').read()  
-    #popup('Pixelization Preview', [put_image(oilpaint_preview),put_buttons(['close_popup()'], onclick=lambda _: close_popup())])
+    #popup('Oil Painting Preview', [put_image(oilpaint_preview),put_buttons(['close'], onclick=lambda _: close_popup())])
     #with use_scope("scope_oilpaint", clear=True):
 # ---------------------------------WATERCOLOR--------------------------------
 
@@ -420,19 +421,14 @@ def check_sigma_r(sigma_r):
         return 'The range of sigma r should between 0 to 1.'
                
 def watercolor(img):
-    #watercolor_preview = open(path+'/watercolor-preview.png', 'rb').read()  
-    #popup('Pixelization Preview', [put_image(watercolor_preview),put_buttons(['close_popup()'], onclick=lambda _: close_popup())])
+    watercolor_preview = open(path+'/watercolor-preview.png', 'rb').read()  
+    popup('Watercolor Preview', [put_image(watercolor_preview),put_buttons(['close'], onclick=lambda _: close_popup())])
     with use_scope("scope_watercolor", clear=True):
-        data = input_group("WATERCOLOR",[
+        data = input_group("Watercolor",[
         input("Adjust sigma s: ", name='sigma_s', type=FLOAT, validate=check_sigma_s, placeholder= "20", help_text="Control smoothening", required=True),
         input("Adjust sigma r: ", name='sigma_r', type=FLOAT, validate=check_sigma_s, placeholder= "0.4", help_text="Control smoothening", required=True),
         select("Choose a color tone: ", ['blue','brown','gray', 'green', 'pink', 'purple','yellow'], name="color_tone", required=True),
-        input("Adjust spatial window radius: ", name='spatial_radius', type=FLOAT, placeholder= "30", help_text="The spatial window radius for Mean Shift Filtering", required=True),
-        input("Adjust color window radius: ", name='color_radius', type=FLOAT, placeholder= "30", help_text="The color window radius for Mean Shift Filtering", required=True),
-        input("Adjust maximum level of pyramid: ", name='max', type=NUMBER, placeholder= "3", help_text="Maximum level of the pyramid for the segmentation", required=True),
-        input("Adjust segmentation scale: ", name='scale', type=FLOAT, placeholder= "40", help_text="Higher means larger segment clusters", required=True),
-        input("Adjust segmentation sigma: ", name='sigma_seg', type=FLOAT, placeholder= "0.4", help_text="Width (standard deviation) of Gaussian kernel used in preprocessing", required=True),
-        input("Adjust segmentation minimun component size: ", name='min',  type=NUMBER, placeholder= "10", help_text="Minimum component size. Enforced using postprocessing", required=True),
+        input("Adjust segment scale: ", name='scale', type=FLOAT, placeholder= "40", help_text="Higher means larger waterlike-segmentation", required=True)
         ])
         
         progress_bar()
@@ -448,9 +444,10 @@ def watercolor(img):
         
         # 2. Color Adjustment
         # color tone image
-        for image_name in os.listdir(path):
-            input_path = os.path.join(path, image_name)
-            if image_name== data['color_tone']+".png":
+        watercolor_path = path + '/watercolor tone'
+        for image_name in os.listdir(watercolor_path):
+            input_path = os.path.join(watercolor_path, image_name)
+            if image_name== data['color_tone']+".jpg":
                 src_img = open(input_path, 'rb').read()    
         
         src_img = np.frombuffer(src_img, np.uint8)
@@ -473,7 +470,7 @@ def watercolor(img):
         sr – The color window radius.
         maxLevel – Maximum level of the pyramid for the segmentation.
         '''
-        result = cv2.pyrMeanShiftFiltering(result, sp=data['spatial_radius'], sr=data['color_radius'], maxLevel=data['max'])
+        result = cv2.pyrMeanShiftFiltering(result, sp=30, sr=30, maxLevel=3)
 
         # 4. Image Segmentation and Fill Mean Value
         '''
@@ -481,13 +478,16 @@ def watercolor(img):
         sigma(float): Width (standard deviation) of Gaussian kernel used in preprocessing.
         min_size(int): Minimum component size. Enforced using postprocessing.
         '''
-        segments = felzenszwalb(result, scale=data['scale'], sigma=data['sigma_seg'], min_size=data['min'])
+        segments = felzenszwalb(result, scale=data['scale'], sigma=0.4, min_size=10)
 
         for i in range(np.max(segments)):
             logical_segment = segments == i
             segment_img = result[logical_segment]
             result[logical_segment] = np.mean(segment_img, axis=0)
         
+        result = cv2.cvtColor(result, cv2.COLOR_BGR2RGB)
+
+
         is_success, im_buf_arr = cv2.imencode(".png", result)
         byte_im = im_buf_arr.tobytes()
 
@@ -520,12 +520,12 @@ def color_change(bw_sketch_gray,color):
     return bw_sketch_rgb
 
 def sketch(img):
-    #sketch_preview = open(path+'/sketch-preview.png', 'rb').read()  
-    #popup('Pixelization Preview', [put_image(sketch_preview),put_buttons(['close_popup()'], onclick=lambda _: close_popup())])
+    sketch_preview = open(path+'/sketch-preview.png', 'rb').read()  
+    popup('Sketch Preview', [put_image(sketch_preview),put_buttons(['close'], onclick=lambda _: close_popup())])
     with use_scope("scope_sketch", clear=True):
-        data = input_group("SKETCH",[
+        data = input_group("Sketch",[
         select("Choose a sketch color: ", ['red', 'orange','yellow','green','blue','purple', 'black'], name="color", required=True),
-        input('Adjust kernel size: ', name='ksize', type=NUMBER,  min = 3, max=199, step=2, validate=check_kernel_odd,  placeholder= "111", help_text="Control bluriness", required=True)
+        input('Adjust kernel size: ', name='ksize', type=NUMBER,  min = 3, max=199, step=2, validate=check_kernel_odd,  placeholder= "111", help_text="Control thickness", required=True)
         ])
 
         progress_bar()
@@ -545,9 +545,10 @@ def sketch(img):
         invblur_img = cv2.bitwise_not(blur_img)
 
         # Sketch Image
-        sketch_img = cv2.divide(grey_img,invblur_img, scale=256.0)
+        sketch = cv2.divide(grey_img,invblur_img, scale=256.0)
+        sketch_img = cv2.cvtColor(sketch, cv2.COLOR_BGR2RGB)
         if data['color'] != 'black':
-            sketch_img = cv2.cvtColor(color_change(sketch_img,data['color']), cv2.COLOR_BGR2RGB)
+            sketch_img = cv2.cvtColor(color_change(sketch,data['color']), cv2.COLOR_BGR2RGB)
         is_success, im_buf_arr = cv2.imencode(".png", sketch_img)
         byte_im = im_buf_arr.tobytes()
 
@@ -609,7 +610,7 @@ def kMeansImage(image, k):
 
 def pixelate(img):
     pixelate_preview = open(path+'/pixelization-preview.png', 'rb').read()  
-    popup('Pixelization Preview', [put_image(pixelate_preview),put_buttons(['close_popup()'], onclick=lambda _: close_popup())])
+    popup('Pixelization Preview', [put_image(pixelate_preview),put_buttons(['close'], onclick=lambda _: close_popup())])
     with use_scope("scope_pixelate", clear=True):
         progress_bar()
         def is_valid(data):
