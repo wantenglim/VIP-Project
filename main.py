@@ -88,7 +88,7 @@ def main_function(img):
 # ---------------------------------FILTERING--------------------------------
 def filter_image(img,lj_map):
     filter_preview = open(path+'/filter-preview.png', 'rb').read()  
-    popup('Filter Preview', [put_image(filter_preview,width='400px'),put_buttons(['close_popup()'], onclick=lambda _: close_popup())])
+    popup('Filter Preview', [put_image(filter_preview),put_buttons(['close_popup()'], onclick=lambda _: close_popup())])
     operation = radio("Image Filter",options = ['Filter Sepia','Filter Lighting','Filter Clarendon','No Filter'], required=True)
     if operation == "Filter sepia":
         filter_sepia(img)
@@ -198,7 +198,7 @@ def filter_clarendon(img,lj_map):
 # ---------------------------------BACKGROUND--------------------------------
 def img_background(img):
     background_preview = open(path+'/background-preview.png', 'rb').read()  
-    popup('Filter Preview', [put_image(background_preview,width='1600px'),put_buttons(['close_popup()'], onclick=lambda _: close_popup())])
+    popup('Background Preview', [put_image(background_preview),put_buttons(['close_popup()'], onclick=lambda _: close_popup())])
     background_choice = radio("Background editing options",options = ['Transparent Background','Solid Color Background',
                                                     'Customize & Patterned Background', 'No Change'], required=True)
     if background_choice == "Transparent Background" :
@@ -295,7 +295,7 @@ def bg_cuspat(img):
 # ---------------------------------CARTOON--------------------------------
 def cartoonization(img):
     cartoon_preview = open(path+'/cartoon-preview.png', 'rb').read()  
-    popup('Cartoonization Preview', [put_image(cartoon_preview,width='400px'),put_buttons(['close_popup()'], onclick=lambda _: close_popup())])
+    popup('Cartoonization Preview', [put_image(cartoon_preview),put_buttons(['close_popup()'], onclick=lambda _: close_popup())])
     cartoon_choice = radio("Cartoonization",options = ['Comics','Twilight','Classic'], required=True)
     if cartoon_choice == "Comics" :
         cartoon_comics(img)
@@ -402,8 +402,12 @@ def cartoon_classic(img):
         img['content'] = byte_im
         put_file(label="Download",name='classic_'+ img['filename'], content=img['content']).onclick(lambda: toast('Your image is downloaded.'))
         put_button("Retry", onclick=start, color='primary', outline=True)
+        
 # ---------------------------------OIL PAINT--------------------------------
-
+#def oilpaint(img):
+    #oilpaint_preview = open(path+'/oilpaint-preview.png', 'rb').read()  
+    #popup('Pixelization Preview', [put_image(oilpaint_preview),put_buttons(['close_popup()'], onclick=lambda _: close_popup())])
+    #with use_scope("scope_oilpaint", clear=True):
 # ---------------------------------WATERCOLOR--------------------------------
 
 def check_sigma_s(sigma_s):
@@ -416,6 +420,8 @@ def check_sigma_r(sigma_r):
         return 'The range of sigma r should between 0 to 1.'
                
 def watercolor(img):
+    #watercolor_preview = open(path+'/watercolor-preview.png', 'rb').read()  
+    #popup('Pixelization Preview', [put_image(watercolor_preview),put_buttons(['close_popup()'], onclick=lambda _: close_popup())])
     with use_scope("scope_watercolor", clear=True):
         data = input_group("WATERCOLOR",[
         input("Adjust sigma s: ", name='sigma_s', type=FLOAT, validate=check_sigma_s, placeholder= "20", help_text="Control smoothening", required=True),
@@ -514,6 +520,8 @@ def color_change(bw_sketch_gray,color):
     return bw_sketch_rgb
 
 def sketch(img):
+    #sketch_preview = open(path+'/sketch-preview.png', 'rb').read()  
+    #popup('Pixelization Preview', [put_image(sketch_preview),put_buttons(['close_popup()'], onclick=lambda _: close_popup())])
     with use_scope("scope_sketch", clear=True):
         data = input_group("SKETCH",[
         select("Choose a sketch color: ", ['red', 'orange','yellow','green','blue','purple', 'black'], name="color", required=True),
@@ -600,6 +608,8 @@ def kMeansImage(image, k):
     return colorClustering(idx, image, k)
 
 def pixelate(img):
+    pixelate_preview = open(path+'/pixelization-preview.png', 'rb').read()  
+    popup('Pixelization Preview', [put_image(pixelate_preview),put_buttons(['close_popup()'], onclick=lambda _: close_popup())])
     with use_scope("scope_pixelate", clear=True):
         progress_bar()
         def is_valid(data):
