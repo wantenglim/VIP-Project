@@ -72,7 +72,7 @@ def progress_bar():
         time.sleep(0.1)
         
 def main_function(img):
-    main_function = radio("Choose a main features",options = ['Cartoonization','Oil Paint','Pencil Sketch','Watercolour','No effect'], required=True)
+    main_function = radio("Choose a style effect",options = ['Cartoonization','Oil Paint','Pencil Sketch','Watercolour','No Effect'], required=True)
     # give user stack filter once more
     if main_function == "Cartoonization":
         cartoonization(img)
@@ -89,7 +89,7 @@ def main_function(img):
 def filter_image(img,lj_map):
     filter_preview = open(path+'/filter-preview.png', 'rb').read()  
     popup('Filter Preview', [put_image(filter_preview,width='400px'),put_buttons(['close_popup()'], onclick=lambda _: close_popup())])
-    operation = radio("Image Filter",options = ['Filter sepia','Filter lighting','Filter clarendon','No filter'], required=True)
+    operation = radio("Image Filter",options = ['Filter Sepia','Filter Lighting','Filter Clarendon','No Filter'], required=True)
     if operation == "Filter sepia":
         filter_sepia(img)
     elif operation == "Filter lighting":
@@ -199,7 +199,7 @@ def filter_clarendon(img,lj_map):
 def img_background(img):
     background_preview = open(path+'/background-preview.png', 'rb').read()  
     popup('Filter Preview', [put_image(background_preview,width='1600px'),put_buttons(['close_popup()'], onclick=lambda _: close_popup())])
-    background_choice = radio("Choose to edit image background",options = ['Transparent Background','Solid Color Background',
+    background_choice = radio("Background editing options",options = ['Transparent Background','Solid Color Background',
                                                     'Customize & Patterned Background', 'No Change'], required=True)
     if background_choice == "Transparent Background" :
         bg_remover(img)
@@ -623,10 +623,8 @@ def pixelate(img):
         img_pixelated = Image.open('img_ori.png')        
         img_pixelated = img_pixelated.resize((img_pixelated.size[0] // pixel_size, img_pixelated.size[1] // pixel_size),Image.NEAREST)
         img_pixelated = img_pixelated.resize((img_pixelated.size[0] * pixel_size, img_pixelated.size[1] * pixel_size),Image.NEAREST)
-        img_pixelated.save("img_pixel.png", format="png")
-        img_pixelated = cv2.cvtColor(np.array(img_pixelated), cv2.COLOR_RGB2BGR)
+        img_pixelated = np.array(img_pixelated)
         img_pixelated = kMeansImage(img_pixelated, 10) #5 colors user need to choose by themselves
-        img_pixelated = cv2.cvtColor(img_pixelated, cv2.COLOR_BGR2RGB)
         result = Image.fromarray(img_pixelated)
 
         put_markdown('## **Pixelization Result**')
@@ -634,7 +632,6 @@ def pixelate(img):
         put_row([put_image(img['content']), None, put_image(result)])
         put_file(label="Download",name='pixel_'+ img['filename'], content=result).onclick(lambda: toast('Your image is downloaded.'))        
         os.remove("img_ori.png")
-        os.remove("img_pixel.png")
 
 if __name__ == '__main__':
     pywebio.start_server(start, port=80)
