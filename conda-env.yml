@@ -1,0 +1,16 @@
+name: pixtono
+
+dependencies:
+  - python
+  - pip
+  - matplotlib
+  - opencv
+  - pip:
+    - opencv-python
+    - pillow
+    - numpy
+    - scikit-image
+    - scikit-learn
+    - imgaug
+    - rembg
+    - pywebio

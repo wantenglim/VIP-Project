@@ -1,0 +1,9 @@
+pywebio
+rembg
+imgaug
+opencv-python
+pillow
+numpy
+matplotlib
+scikit-image
+scikit-learn
