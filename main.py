@@ -6,6 +6,7 @@ from pywebio.exceptions import SessionClosedException
 import sys
 import asyncio
 import cv2
+import random
 from PIL import Image
 from PIL import ImageFile
 import io
@@ -25,6 +26,7 @@ from skimage.segmentation import mark_boundaries
 from rembg.bg import remove
 from sklearn.cluster import KMeans
 from imgaug import augmenters as iaa
+from scipy import ndimage
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -43,8 +45,8 @@ def start():
         img = file_upload("Upload an image:", accept="image/*", required=True)
         lj_map = open(path+'/lj_map.png', 'rb').read()
         #step 1: enhance image 
-        #img_enhance(img)
-        # add no enhancement
+        # Image equalization
+        image_enhance(img)
         #step 2: image filter 
         filter_image(img,lj_map)
         #step 3: background remove 
@@ -77,27 +79,96 @@ def main_function(img):
     # give user stack filter once more
     if main_function == "Cartoonization":
         cartoonization(img)
-    #elif main_function == "Oil Paint":
-        #oil_paint(img)
+    elif main_function == "Oil Paint":
+        oil_paint(img)
     elif main_function == "Pencil Sketch":
         sketch(img)
     elif main_function == "Watercolour":
         watercolor(img)
     elif main_function == "No effect":
         return img
-# ---------------------------------ENHANCEMENT--------------------------------        
+# ---------------------------------ENHANCEMENT--------------------------------
+#rotate effect
+def rotate_image(image, angle):
+  image_center = tuple(np.array(image.shape[1::-1]) / 2)
+  rot_mat = cv2.getRotationMatrix2D(image_center, angle, 1.0)
+  result = cv2.warpAffine(image, rot_mat, image.shape[1::-1], flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
+  return result
+
+#adjust bright and contrast
+def apply_brightness_contrast(image, brightness = 0, contrast = 0):
+    if brightness != 0:
+        if brightness > 0:
+            shadow = brightness
+            highlight = 255
+        else:
+            shadow = 0
+            highlight = 255 + brightness
+        alpha_b = (highlight - shadow)/255
+        gamma_b = shadow
+        buf = cv2.addWeighted(image, alpha_b, image, 0, gamma_b)
+    else:
+        buf = image.copy()
+    if contrast != 0:
+        f = 131*(contrast + 127)/(127*(131-contrast))
+        alpha_c = f
+        gamma_c = 127*(1-f)
+        
+        buf = cv2.addWeighted(buf, alpha_c, buf, 0, gamma_c)
+    return buf
+
+def image_enhance(img):
+    with use_scope("scope_enhance", clear=True):
+        data = input_group("Image Enhancement",[
+        select("Image Equalization: ", ["Yes", "No"], name='CLAHE', required=True),
+        select("Denoise: ", ["Yes", "No"], name='denoise', required=True),
+        input('Rotate Image: ', name='rotate', type=NUMBER, min = -90, max=90, placeholder= "0", value=0),
+        input('Adjust brightness: ', name='brightness', type=NUMBER, min = -127, max=127, placeholder= "0", value=0),
+        input('Adjust contrast: ', name='contrast', type=NUMBER, min = -127, max=127, placeholder= "0", value=0)
+        ])
+        progress_bar()
+
+        result = img['content']
+        result = np.frombuffer(result, np.uint8)
+        result = cv2.imdecode(result, cv2.IMREAD_COLOR)
+        # 1. image CLAHE (equalization)
+        if data['CLAHE'] == 'Yes':
+            src_lab = cv2.cvtColor(result, cv2.COLOR_BGR2LAB)
+            l, a, b = cv2.split(src_lab)
+            clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+            cl = clahe.apply(l)
+            result = cv2.merge((cl,a,b))
+            result = cv2.cvtColor(result, cv2.COLOR_LAB2BGR)
+            result = np.array(result, dtype=np.uint8)
+        # 2. image denoising
+        if data['denoise'] == 'Yes':
+            result = cv2.fastNlMeansDenoisingColored(result, None, 10, 10, 7, 21)
+        # 3. rotate image
+        result = rotate_image(result, data['rotate'])
+        # 4. adjust brightness and contrast
+        result = apply_brightness_contrast(result, data['brightness'], data['contrast'])
+        is_success, im_buf_arr = cv2.imencode(".png", result)
+        byte_im = im_buf_arr.tobytes()
+        put_markdown('## **Image Enhancement Result**')
+        put_row([put_text("Before: "), None, put_text("After: ")])
+        put_row([put_image(img['content']), None, put_image(byte_im)])
+        img['content'] = byte_im
+        put_file(label="Download",name='enhance_'+ img['filename'], content=img['content']).onclick(lambda: toast('Your image is downloaded.'))
+        put_button("Retry", onclick=start, color='primary', outline=True)
+        put_html('<hr>')
+
 # ---------------------------------FILTERING--------------------------------
 def filter_image(img,lj_map):
     filter_preview = open(path+'/filter-preview.png', 'rb').read()  
     popup('Filter Preview', [put_image(filter_preview),put_buttons(['close'], onclick=lambda _: close_popup())])
     operation = radio("Image Filter",options = ['Filter Sepia','Filter Lighting','Filter Clarendon','No Filter'], required=True)
-    if operation == "Filter sepia":
+    if operation == "Filter Sepia":
         filter_sepia(img)
-    elif operation == "Filter lighting":
+    elif operation == "Filter Lighting":
         filter_lighting(img)
-    elif operation == "Filter clarendon":
+    elif operation == "Filter Clarendon":
         filter_clarendon(img,lj_map)
-    elif operation == "No filter":
+    elif operation == "No Filter":
         return img
     
 #sepia effect
@@ -405,10 +476,115 @@ def cartoon_classic(img):
         put_button("Retry", onclick=start, color='primary', outline=True)
         
 # ---------------------------------OIL PAINT--------------------------------
-#def oilpaint(img):
-    #oilpaint_preview = open(path+'/oilpaint-preview.png', 'rb').read()  
-    #popup('Oil Painting Preview', [put_image(oilpaint_preview),put_buttons(['close'], onclick=lambda _: close_popup())])
-    #with use_scope("scope_oilpaint", clear=True):
+def check_brush(value):
+    if value < 0 or value > 10:
+        return 'The range of brush should between 0 to 10.'
+
+
+def check_color(value):
+    if value < 0 or value > 20:
+        return 'The range of color should between 0 to 20.'
+
+def prewitt(img):
+    img_gaussian = cv2.GaussianBlur(img,(3,3),0)
+    kernelx = np.array( [[1, 1, 1],[0, 0, 0],[-1, -1, -1]] )
+    kernely = np.array( [[-1, 0, 1],[-1, 0, 1],[-1, 0, 1]] )
+    img_prewittx = cv2.filter2D(img_gaussian, -1, kernelx)
+    img_prewitty = cv2.filter2D(img_gaussian, -1, kernely)
+    return img_prewittx // 15.36, img_prewitty // 15.36
+
+def roberts(img):
+    roberts_cross_v = np.array( [[ 0, 0, 0 ],
+                                 [ 0, 1, 0 ],
+                                 [ 0, 0,-1 ]] )
+    roberts_cross_h = np.array( [[ 0, 0, 0 ],
+                                 [ 0, 0, 1 ],
+                                 [ 0,-1, 0 ]] )
+    vertical = ndimage.convolve( img, roberts_cross_v )
+    horizontal = ndimage.convolve( img, roberts_cross_h )
+    return vertical // 50.0, horizontal // 50.0
+
+# Different Edge Operator 
+def get_gradient(img_o, ksize, gtype):
+    if gtype == 'scharr':
+        X = cv2.Scharr(img_o, cv2.CV_32F, 1, 0) / 50.0
+        Y = cv2.Scharr(img_o, cv2.CV_32F, 0, 1) / 50.0
+    elif gtype == 'prewitt':
+        X, Y = prewitt(img_o)
+    elif gtype == 'sobel':
+        X = cv2.Sobel(img_o,cv2.CV_32F,1,0,ksize=5)  / 50.0
+        Y = cv2.Sobel(img_o,cv2.CV_32F,0,1,ksize=5)  / 50.0
+    elif gtype == 'roberts':
+        X, Y = roberts(img_o)
+    else:
+        print('Not suppported type!')
+        exit()
+
+    # Blur the Gradient to smooth the edge
+    X = cv2.GaussianBlur(X, ksize, 0)
+    Y = cv2.GaussianBlur(Y, ksize, 0)
+    return X, Y
+
+def draw_order(h, w, scale):
+    order = []
+    for i in range(0, h, scale):
+        for j in range(0, w, scale):
+            y = random.randint(-scale // 2, scale // 2) + i
+            x = random.randint(-scale // 2, scale // 2) + j
+            order.append((y % h, x % w))
+    return order
+
+def oil_paint(img):
+    oilpaint_preview = open(path+'/oilpaint-preview.png', 'rb').read()  
+    popup('Oil Painting Preview', [put_image(oilpaint_preview),put_buttons(['close'], onclick=lambda _: close_popup())])
+    with use_scope("scope_oilpaint", clear=True):
+        data = input_group("Oil Paint",[
+        input("Adjust brush: ", name='brush', type=FLOAT, validate=check_brush, placeholder= "2", help_text="Control brush", required=True),
+        input("Adjust color: ", name='color', type=FLOAT, validate=check_color, placeholder= "1", help_text="Control color palette (limited color)", required=True),
+        select("Choose oil paint style: ", ['roberts','scharr','prewitt', 'sobel'], name="oil_style", required=True),
+        ])
+
+        progress_bar()
+        
+        result = img['content']
+        result = np.frombuffer(result, np.uint8)
+        result = cv2.imdecode(result, cv2.IMREAD_COLOR)
+        result = cv2.cvtColor(result, cv2.COLOR_BGR2RGB)
+        
+        # 1. 
+        #result = cv2.edgePreservingFilter(result, flags=1, sigma_s=data['sigma_s'], sigma_r=data['sigma_r'],)
+        r = 2 * int(result.shape[0] / 50) + 1
+        Gx, Gy = get_gradient(cv2.cvtColor(result, cv2.COLOR_BGR2GRAY), (r, r), data["oil_style"])
+        Gh = np.sqrt(np.sqrt(np.square(Gx) + np.square(Gy)))    # Length of the ellipse
+        Ga = (np.arctan2(Gy, Gx) / np.pi) * 180 + 90            # Angle of the ellipse
+        
+        # 2. Color Adjustment
+        # 
+        canvas = cv2.medianBlur(result, 11)    # Make the image artlistic
+        order = draw_order(result.shape[0], result.shape[1], scale=data["brush"]*2)
+        oil_img = []
+        colors = np.array(result, dtype=np.float)
+        for i, (y, x) in enumerate(order):
+            length = int(round(data["brush"] + data["brush"] * Gh[y, x]))
+            # Select color
+            if data["color"] != 0: color = np.array([round(colors[y,x][0]/data["color"])*data["color"]+random.randint(-5,5), 
+                round(colors[y,x][1]/data["color"])*data["color"]+random.randint(-5,5), round(colors[y,x][2]/data["color"])*data["color"]+random.randint(-5,5)], dtype=np.float)
+            else: color = colors[y,x]
+            cv2.ellipse(canvas, (x, y), (length, data["brush"]), Ga[y, x], 0, 360, color, -1, cv2.LINE_AA)
+        oil_img.append(canvas)
+        
+        result = cv2.cvtColor(oil_img[0], cv2.COLOR_BGR2RGB)
+
+        is_success, im_buf_arr = cv2.imencode(".png", result)
+        byte_im = im_buf_arr.tobytes()
+
+        put_markdown('## **Oil Painting Result**')
+        put_row([put_text("Before: "), None, put_text("After: ")])
+        put_row([put_image(img['content']), None, put_image(byte_im)])        
+        img['content'] = byte_im
+        put_file(label="Download",name='oilpaint_'+ img['filename'], content=img['content']).onclick(lambda: toast('Your image is downloaded.'))
+        put_button("Retry", onclick=start, color='primary', outline=True)
+
 # ---------------------------------WATERCOLOR--------------------------------
 
 def check_sigma_s(sigma_s):
@@ -428,7 +604,7 @@ def watercolor(img):
         input("Adjust sigma s: ", name='sigma_s', type=FLOAT, validate=check_sigma_s, placeholder= "20", help_text="Control smoothening", required=True),
         input("Adjust sigma r: ", name='sigma_r', type=FLOAT, validate=check_sigma_s, placeholder= "0.4", help_text="Control smoothening", required=True),
         select("Choose a color tone: ", ['blue','brown','gray', 'green', 'pink', 'purple','yellow'], name="color_tone", required=True),
-        input("Adjust segment scale: ", name='scale', type=FLOAT, placeholder= "40", help_text="Higher means larger waterlike-segmentation", required=True)
+        input("Adjust segment scale: ", name='scale', type=FLOAT, placeholder= "40", help_text="Higher means larger watercolor-like segmentation", required=True)
         ])
         
         progress_bar()
