@@ -125,7 +125,7 @@ def filter_sepia(img):
         result = sepia(result)
         is_success, im_buf_arr = cv2.imencode(".png", result)
         byte_im = im_buf_arr.tobytes()
-        put_markdown('## **Result**')
+        put_markdown('## **Sepia Filter Result**')
         put_row([put_text("Before: "), None, put_text("After: ")])
         put_row([put_image(img['content']), None, put_image(byte_im)])
         img['content'] = byte_im
@@ -166,7 +166,7 @@ def filter_lighting(img):
                     result = dst
         is_success, im_buf_arr = cv2.imencode(".png", result)
         byte_im = im_buf_arr.tobytes()
-        put_markdown('## **Result**')
+        put_markdown('## **Lighting Filter Result**')
         put_row([put_text("Before: "), None, put_text("After: ")])
         put_row([put_image(img['content']), None, put_image(byte_im)])
         img['content'] = byte_im
@@ -189,7 +189,7 @@ def filter_clarendon(img,lj_map):
         result = dst
         is_success, im_buf_arr = cv2.imencode(".png", result)
         byte_im = im_buf_arr.tobytes()
-        put_markdown('## **Result**')
+        put_markdown('## **Clarendon Filter Result**')
         put_row([put_text("Before: "), None, put_text("After: ")])
         put_row([put_image(img['content']), None, put_image(byte_im)])
         img['content'] = byte_im
@@ -346,7 +346,7 @@ def cartoon_comics(img):
         plt.savefig('cartooned.png',bbox_inches='tight')
         plt.close()
         result = open('cartooned.png', 'rb').read()
-        put_markdown('## **Result**')
+        put_markdown('## **Comics Cartoonization Result**')
         put_row([put_text("Before: "), None, put_text("After: ")])
         put_row([put_image(img['content']), None, put_image(result)])
         img['content'] = result
@@ -380,7 +380,7 @@ def cartoon_twilight(img):
         result = cv2.bitwise_and(blurred, blurred, mask=edges)
         is_success, im_buf_arr = cv2.imencode(".png", result)
         byte_im = im_buf_arr.tobytes()
-        put_markdown('## **Result**')
+        put_markdown('## **Twilight Cartoonization Result**')
         put_row([put_text("Before: "), None, put_text("After: ")])
         put_row([put_image(img['content']), None, put_image(byte_im)])
         img['content'] = byte_im
@@ -397,7 +397,7 @@ def cartoon_classic(img):
         result = Countours(coloured)
         is_success, im_buf_arr = cv2.imencode(".png", result)
         byte_im = im_buf_arr.tobytes()
-        put_markdown('## **Result**')
+        put_markdown('## **Classic Cartoonization Result**')
         put_row([put_text("Before: "), None, put_text("After: ")])
         put_row([put_image(img['content']), None, put_image(byte_im)])
         img['content'] = byte_im
@@ -491,7 +491,7 @@ def watercolor(img):
         is_success, im_buf_arr = cv2.imencode(".png", result)
         byte_im = im_buf_arr.tobytes()
 
-        put_markdown('## **Result**')
+        put_markdown('## **Watercolour Painting Result**')
         put_row([put_text("Before: "), None, put_text("After: ")])
         put_row([put_image(img['content']), None, put_image(byte_im)])        
         img['content'] = byte_im
@@ -552,7 +552,7 @@ def sketch(img):
         is_success, im_buf_arr = cv2.imencode(".png", sketch_img)
         byte_im = im_buf_arr.tobytes()
 
-        put_markdown('## **Result**')
+        put_markdown('## **Pencil Sketch Result**')
         put_row([put_text("Before: "), None, put_text("After: ")])
         put_row([put_image(img['content']), None, put_image(byte_im)])
         img['content'] = byte_im
@@ -627,7 +627,7 @@ def pixelate(img):
         ])
         
         pixel_size = pixel['pixelsize']
-        no_colors = pixel['pixelcolor']
+        num_colors = pixel['pixelcolor']
         image = img['content']
         image = Image.open(io.BytesIO(image))
         image.save('img_ori.png', format='PNG')
@@ -635,14 +635,20 @@ def pixelate(img):
         img_pixelated = img_pixelated.resize((img_pixelated.size[0] // pixel_size, img_pixelated.size[1] // pixel_size),Image.NEAREST)
         img_pixelated = img_pixelated.resize((img_pixelated.size[0] * pixel_size, img_pixelated.size[1] * pixel_size),Image.NEAREST)
         img_pixelated = np.array(img_pixelated)
-        img_pixelated = kMeansImage(img_pixelated, 10) #5 colors user need to choose by themselves
-        result = Image.fromarray(img_pixelated)
+        img_pixelated = Image.fromarray(img_pixelated)
+        img_pixelated.save('img_pixel.png', format='PNG')
+        img_pixelated_color = cv2.imread('img_pixel.png') 
+        img_pixelated_color = kMeansImage(img_pixelated_color, num_colors) #5 colors user need to choose by themselves
+        img_pixelated_color = cv2.cvtColor(img_pixelated_color, cv2.COLOR_BGR2RGB)
+        result = Image.fromarray(img_pixelated_color)
 
         put_markdown('## **Pixelization Result**')
         put_row([put_text("Before: "), None, put_text("After: ")])
         put_row([put_image(img['content']), None, put_image(result)])
         put_file(label="Download",name='pixel_'+ img['filename'], content=result).onclick(lambda: toast('Your image is downloaded.'))        
         os.remove("img_ori.png")
+        os.remove("img_pixel.png")
+        put_button("Retry", onclick=start, color='primary', outline=True)
 
 if __name__ == '__main__':
     pywebio.start_server(start, port=80)
