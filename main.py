@@ -120,8 +120,8 @@ def apply_brightness_contrast(image, brightness = 0, contrast = 0):
 def image_enhance(img):
     with use_scope("scope_enhance", clear=True):
         data = input_group("Image Enhancement",[
-        select("Image Equalization: ", ["Yes", "No"], name='CLAHE', required=True),
-        select("Denoise: ", ["Yes", "No"], name='denoise', required=True),
+        select("Image Equalization: ", ["No", "Yes"], name='CLAHE', required=True),
+        select("Denoise: ", ["No", "Yes"], name='denoise', required=True),
         input('Rotate Image: ', name='rotate', type=NUMBER, min = -90, max=90, placeholder= "0", value=0),
         input('Adjust brightness: ', name='brightness', type=NUMBER, min = -127, max=127, placeholder= "0", value=0),
         input('Adjust contrast: ', name='contrast', type=NUMBER, min = -127, max=127, placeholder= "0", value=0)
@@ -147,15 +147,17 @@ def image_enhance(img):
         result = rotate_image(result, data['rotate'])
         # 4. adjust brightness and contrast
         result = apply_brightness_contrast(result, data['brightness'], data['contrast'])
-        is_success, im_buf_arr = cv2.imencode(".png", result)
-        byte_im = im_buf_arr.tobytes()
-        put_markdown('## **Image Enhancement Result**')
-        put_row([put_text("Before: "), None, put_text("After: ")])
-        put_row([put_image(img['content']), None, put_image(byte_im)])
-        img['content'] = byte_im
-        put_file(label="Download",name='enhance_'+ img['filename'], content=img['content']).onclick(lambda: toast('Your image is downloaded.'))
-        put_button("Retry", onclick=start, color='primary', outline=True)
-        put_html('<hr>')
+
+        if data['CLAHE'] == 'Yes' or data['denoise'] == 'Yes' or data['rotate'] != 0 or data['brightness'] != 0 or data['contrast'] != 0:
+            is_success, im_buf_arr = cv2.imencode(".png", result)
+            byte_im = im_buf_arr.tobytes()
+            put_markdown('## **Image Enhancement Result**')
+            put_row([put_text("Before: "), None, put_text("After: ")])
+            put_row([put_image(img['content']), None, put_image(byte_im)])
+            img['content'] = byte_im
+            put_file(label="Download",name='enhance_'+ img['filename'], content=img['content']).onclick(lambda: toast('Your image is downloaded.'))
+            put_button("Retry", onclick=start, color='primary', outline=True)
+            put_html('<hr>')
 
 # ---------------------------------FILTERING--------------------------------
 def filter_image(img,lj_map):
@@ -476,15 +478,6 @@ def cartoon_classic(img):
         put_button("Retry", onclick=start, color='primary', outline=True)
         
 # ---------------------------------OIL PAINT--------------------------------
-def check_brush(value):
-    if value < 0 or value > 10:
-        return 'The range of brush should between 0 to 10.'
-
-
-def check_color(value):
-    if value < 0 or value > 20:
-        return 'The range of color should between 0 to 20.'
-
 def prewitt(img):
     img_gaussian = cv2.GaussianBlur(img,(3,3),0)
     kernelx = np.array( [[1, 1, 1],[0, 0, 0],[-1, -1, -1]] )
@@ -539,8 +532,8 @@ def oil_paint(img):
     popup('Oil Painting Preview', [put_image(oilpaint_preview),put_buttons(['close'], onclick=lambda _: close_popup())])
     with use_scope("scope_oilpaint", clear=True):
         data = input_group("Oil Paint",[
-        input("Adjust brush: ", name='brush', type=FLOAT, validate=check_brush, placeholder= "2", help_text="Control brush", required=True),
-        input("Adjust color: ", name='color', type=FLOAT, validate=check_color, placeholder= "1", help_text="Control color palette (limited color)", required=True),
+        input('Adjust brush: ', name='brush', type=NUMBER, min = 1, max=10, placeholder= "1", value=1, help_text="Large size of brush -> Thicker the stroke"),
+        input('Adjust color: ', name='color', type=NUMBER, min = 1, max=30, placeholder= "1", value=1, help_text="More no. of colors -> More detailed stroke color"),
         select("Choose oil paint style: ", ['roberts','scharr','prewitt', 'sobel'], name="oil_style", required=True),
         ])
 
@@ -552,7 +545,6 @@ def oil_paint(img):
         result = cv2.cvtColor(result, cv2.COLOR_BGR2RGB)
         
         # 1. 
-        #result = cv2.edgePreservingFilter(result, flags=1, sigma_s=data['sigma_s'], sigma_r=data['sigma_r'],)
         r = 2 * int(result.shape[0] / 50) + 1
         Gx, Gy = get_gradient(cv2.cvtColor(result, cv2.COLOR_BGR2GRAY), (r, r), data["oil_style"])
         Gh = np.sqrt(np.sqrt(np.square(Gx) + np.square(Gy)))    # Length of the ellipse
