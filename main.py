@@ -809,11 +809,14 @@ def pixelate(img):
         img_pixelated_color = kMeansImage(img_pixelated_color, num_colors) #5 colors user need to choose by themselves
         img_pixelated_color = cv2.cvtColor(img_pixelated_color, cv2.COLOR_BGR2RGB)
         result = Image.fromarray(img_pixelated_color)
+        buf = io.BytesIO()
+        result.save(buf, format='PNG')
+        byte_im = buf.getvalue()
 
         put_markdown('## **Pixelization Result**')
         put_row([put_text("Before: "), None, put_text("After: ")])
         put_row([put_image(img['content']), None, put_image(result)])
-        put_file(label="Download",name='pixel_'+ img['filename'], content=result).onclick(lambda: toast('Your image is downloaded.'))        
+        put_file(label="Download",name='pixel_'+ img['filename'], content=byte_im).onclick(lambda: toast('Your image is downloaded.'))        
         os.remove("img_ori.png")
         os.remove("img_pixel.png")
         put_button("Retry", onclick=start, color='primary', outline=True)
