@@ -762,12 +762,11 @@ def segmentImgClrRGB(img, k):
     
     imgC.shape = (img.shape[0] * img.shape[1], 3)
     
-    #5. Run k-means on the vectorized responses X to get a vector of labels (the clusters); 
-    #  
+    #Run k-means on the vectorized responses X to get a vector of labels (the clusters)
     kmeans = KMeans(n_clusters=k, random_state=0).fit(imgC).labels_
     
-    #6. Reshape the label results of k-means so that it has the same size as the input image
-    #   Return the label image which we call idx
+    #Reshape the label results of k-means so that it has the same size as the input image
+    #Return the label image which we call idx
     kmeans.shape = (h, w)
 
     return kmeans
