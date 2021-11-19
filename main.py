@@ -544,14 +544,11 @@ def oil_paint(img):
         result = cv2.imdecode(result, cv2.IMREAD_COLOR)
         result = cv2.cvtColor(result, cv2.COLOR_BGR2RGB)
         
-        # 1. 
         r = 2 * int(result.shape[0] / 50) + 1
         Gx, Gy = get_gradient(cv2.cvtColor(result, cv2.COLOR_BGR2GRAY), (r, r), data["oil_style"])
         Gh = np.sqrt(np.sqrt(np.square(Gx) + np.square(Gy)))    # Length of the ellipse
         Ga = (np.arctan2(Gy, Gx) / np.pi) * 180 + 90            # Angle of the ellipse
         
-        # 2. Color Adjustment
-        # 
         canvas = cv2.medianBlur(result, 11)    # Make the image artlistic
         order = draw_order(result.shape[0], result.shape[1], scale=data["brush"]*2)
         oil_img = []
